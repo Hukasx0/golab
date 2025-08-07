@@ -6,7 +6,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-F38020?logo=cloudflare&logoColor=white)](https://workers.cloudflare.com/)
 [![Hono](https://img.shields.io/badge/Hono-E36002?logo=hono&logoColor=white)](https://hono.dev/)
-[![Bundle Size](https://img.shields.io/badge/Bundle%20Size-<1MB-green)](https://developers.cloudflare.com/workers/platform/limits/)
+[![Bundle Size](https://img.shields.io/badge/Bundle%20Size-<3MB-green)](https://developers.cloudflare.com/workers/platform/limits/)
 [![Security](https://img.shields.io/badge/Security-WAF%20Ready-red)](https://www.cloudflare.com/waf/)
 
 **A reliable, secure, and fast contact form API service built for static websites**

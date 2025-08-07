@@ -1,0 +1,45 @@
+{
+  "name": "golab",
+  "version": "0.8.0",
+  "description": "Gołąb - A carrier pigeon for your contact forms. API service for handling contact form submissions and sending emails.",
+  "main": "src/index.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --hot src/index.ts",
+    "build": "bun build src/index.ts --outdir dist --target bun --minify",
+    "build:worker": "bun build src/index.ts --outdir dist --target browser --minify",
+    "test": "bun test",
+    "test:watch": "bun test --watch",
+    "test:coverage": "bun test --coverage",
+    "deploy": "wrangler deploy",
+    "deploy:dev": "wrangler deploy --env development",
+    "wrangler": "wrangler"
+  },
+  "keywords": [
+    "contact-form",
+    "api",
+    "hono",
+    "cloudflare-workers",
+    "email",
+    "resend",
+    "typescript",
+    "bun"
+  ],
+  "author": "Hubert Kasperek",
+  "license": "AGPL-3.0",
+  "dependencies": {
+    "hono": "^3.12.8",
+    "resend": "^2.1.0",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20231218.0",
+    "@types/bun": "latest",
+    "bun-types": "latest",
+    "typescript": "^5.3.3",
+    "wrangler": "^3.22.1"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  }
+}

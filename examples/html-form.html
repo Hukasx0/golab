@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gołąb Contact Form - HTML Example</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            width: 100%;
+            max-width: 500px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .pigeon-icon {
+            font-size: 32px;
+            margin-right: 10px;
+        }
+
+        .subtitle {
+            color: #6c757d;
+            font-size: 16px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #495057;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        input[type="email"],
+        input[type="text"],
+        textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+            font-family: inherit;
+        }
+
+        input[type="email"]:focus,
+        input[type="text"]:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        .submit-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            color: white;
+            border: none;
+            padding: 14px 20px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 123, 255, 0.3);
+        }
+
+        .submit-btn:active {
+            transform: translateY(0);
+        }
+
+        .submit-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .message {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 500;
+            display: none;
+        }
+
+        .message.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #007bff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e9ecef;
+            color: #6c757d;
+            font-size: 14px;
+        }
+
+        .api-info {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 30px;
+            border-left: 4px solid #007bff;
+        }
+
+        .api-info h3 {
+            color: #495057;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .api-info code {
+            background-color: #e9ecef;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 30px 20px;
+            }
+            
+            .header h1 {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><span class="pigeon-icon">🕊️</span>Gołąb Contact Form</h1>
+            <p class="subtitle">Your reliable carrier pigeon for messages</p>
+        </div>
+
+        <div id="message" class="message"></div>
+
+        <form id="contactForm">
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+
+            <div class="form-group">
+                <label for="subject">Subject</label>
+                <input type="text" id="subject" name="subject" required maxlength="200">
+            </div>
+
+            <div class="form-group">
+                <label for="message">Message</label>
+                <textarea id="message-field" name="message" required minlength="10" maxlength="5000" placeholder="Write your message here..."></textarea>
+            </div>
+
+            <button type="submit" class="submit-btn" id="submitBtn">
+                Send Message 🕊️
+            </button>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Sending your message...</p>
+            </div>
+        </form>
+
+        <div class="footer">
+            <p><strong>Gołąb</strong> - Polish for "pigeon" 🕊️</p>
+            <p>A carrier pigeon service for your contact forms</p>
+        </div>
+
+        <div class="api-info">
+            <h3>🔧 API Configuration</h3>
+            <p>Update the <code>API_ENDPOINT</code> variable in the JavaScript below to point to your deployed Gołąb API.</p>
+            <p>Current endpoint: <code id="current-endpoint">https://your-golab-api.workers.dev</code></p>
+        </div>
+    </div>
+
+    <script>
+        // 🔧 CONFIGURATION: Update this URL to your deployed Gołąb API
+        const API_ENDPOINT = 'https://your-golab-api.workers.dev/api/contact';
+        
+        // 🔑 OPTIONAL: Set your API key if authentication is enabled
+        // Generate with: openssl rand -base64 32
+        const API_KEY = ''; // Leave empty if API key authentication is disabled
+        
+        // Update the display
+        document.getElementById('current-endpoint').textContent = API_ENDPOINT;
+
+        const form = document.getElementById('contactForm');
+        const messageDiv = document.getElementById('message');
+        const submitBtn = document.getElementById('submitBtn');
+        const loading = document.getElementById('loading');
+
+        function showMessage(text, type) {
+            messageDiv.textContent = text;
+            messageDiv.className = `message ${type}`;
+            messageDiv.style.display = 'block';
+            
+            // Auto-hide success messages after 5 seconds
+            if (type === 'success') {
+                setTimeout(() => {
+                    messageDiv.style.display = 'none';
+                }, 5000);
+            }
+        }
+
+        function setLoading(isLoading) {
+            if (isLoading) {
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Sending...';
+                loading.style.display = 'block';
+            } else {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Send Message 🕊️';
+                loading.style.display = 'none';
+            }
+        }
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(form);
+            const data = {
+                email: formData.get('email'),
+                subject: formData.get('subject'),
+                message: formData.get('message')
+            };
+
+            // Basic client-side validation
+            if (!data.email || !data.subject || !data.message) {
+                showMessage('Please fill in all fields.', 'error');
+                return;
+            }
+
+            if (data.message.length < 10) {
+                showMessage('Message must be at least 10 characters long.', 'error');
+                return;
+            }
+
+            setLoading(true);
+            messageDiv.style.display = 'none';
+
+            try {
+                // Prepare headers
+                const headers = {
+                    'Content-Type': 'application/json',
+                };
+                
+                // Add API key header if configured
+                if (API_KEY && API_KEY.trim() !== '') {
+                    headers['X-API-Key'] = API_KEY;
+                }
+
+                const response = await fetch(API_ENDPOINT, {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    showMessage(result.message || 'Message sent successfully! 🕊️', 'success');
+                    form.reset();
+                } else {
+                    let errorMessage = 'Failed to send message. Please try again.';
+                    
+                    if (result.error) {
+                        errorMessage = result.error;
+                    }
+                    
+                    if (result.details && result.details.length > 0) {
+                        errorMessage += ' Issues: ' + result.details.map(d => d.message).join(', ');
+                    }
+                    
+                    showMessage(errorMessage, 'error');
+                }
+            } catch (error) {
+                console.error('Error sending message:', error);
+                showMessage('Network error. Please check your connection and try again.', 'error');
+            } finally {
+                setLoading(false);
+            }
+        });
+
+        // Character counter for message field
+        const messageField = document.getElementById('message-field');
+        const maxLength = 5000;
+
+        messageField.addEventListener('input', () => {
+            const remaining = maxLength - messageField.value.length;
+            const label = messageField.previousElementSibling;
+            
+            if (remaining < 100) {
+                label.textContent = `Message (${remaining} characters remaining)`;
+                label.style.color = remaining < 20 ? '#dc3545' : '#ffc107';
+            } else {
+                label.textContent = 'Message';
+                label.style.color = '#495057';
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,37 @@
+name = "golab"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Bundle optimization for size reduction
+[build]
+command = "bun run build:worker"
+
+# Minification and optimization
+minify = true
+
+[env.development]
+name = "golab-dev"
+
+[env.production]
+name = "golab-prod"
+
+# Environment variables (set these using wrangler secret put)
+# wrangler secret put TARGET_EMAIL
+# wrangler secret put RESEND_API_KEY
+
+# CORS configuration
+[vars]
+ALLOWED_ORIGINS = "*"  # Change this to your domain in production
+
+# Rate limiting and security will be handled by Cloudflare WAF
+# Configure WAF rules in Cloudflare dashboard for:
+# - Rate limiting (e.g., 10 requests per minute per IP, or however you want)
+# - Bot protection
+# - Geographic restrictions if needed
+# - Custom rules for additional security
+
+# Optional: Custom domains
+# [[env.production.routes]]
+# pattern = "api.yourdomain.com/*"
+# zone_name = "yourdomain.com"

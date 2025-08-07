@@ -1,0 +1,82 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build-and-validate:
+    name: Build and Validate Size
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+          
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+            
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+        
+      - name: Build project
+        run: bun run build
+        
+      - name: Check build output exists
+        run: |
+          if [ ! -f "dist/index.js" ]; then
+            echo "❌ Build output not found at dist/index.js"
+            exit 1
+          fi
+          echo "✅ Build output found at dist/index.js"
+          
+      - name: Validate build size
+        run: |
+          # Get file size in bytes (compatible with both Linux and macOS)
+          SIZE=$(stat -c%s "dist/index.js" 2>/dev/null || stat -f%z "dist/index.js")
+          SIZE_MB=$(echo "scale=2; $SIZE / 1024 / 1024" | bc)
+          SIZE_KB=$(echo "scale=2; $SIZE / 1024" | bc)
+          
+          # 1MB = 1048576 bytes
+          MAX_SIZE=1048576
+          
+          echo "📦 Build Information:"
+          echo "  File: dist/index.js"
+          echo "  Size: $SIZE bytes"
+          echo "  Size: ${SIZE_KB} KB"
+          echo "  Size: ${SIZE_MB} MB"
+          echo "  Limit: 1.00 MB (${MAX_SIZE} bytes)"
+          echo ""
+          
+          if [ $SIZE -gt $MAX_SIZE ]; then
+            echo "❌ Build size exceeds 1MB limit!"
+            echo "   Current: ${SIZE_MB} MB"
+            echo "   Limit:   1.00 MB"
+            echo "   Excess:  $(echo "scale=2; $SIZE_MB - 1" | bc) MB"
+            echo ""
+            echo "💡 Tips to reduce bundle size:"
+            echo "   - Remove unused dependencies"
+            echo "   - Use tree-shaking"
+            echo "   - Optimize imports"
+            echo "   - Consider code splitting"
+            exit 1
+          else
+            REMAINING=$(echo "scale=2; 1 - $SIZE_MB" | bc)
+            echo "✅ Build size is within limits!"
+            echo "   Current: ${SIZE_MB} MB"
+            echo "   Limit:   1.00 MB"
+            echo "   Remaining: ${REMAINING} MB"
+          fi
+          

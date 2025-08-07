@@ -15,7 +15,7 @@
 
 *delivers your contact form messages straight to your inbox quickly and securely*
 
-[🚀 Quick Start](#-quick-start) • [🔒 Security](#-security-architecture) • [📖 API Docs](#-api-documentation) • [🛡️ Deployment](#-secure-deployment)
+[🚀 Quick Start](#-quick-start) • [🔒 Security](#-security-architecture) • [📖 API Docs](#-api-documentation) • [🛡️ Deployment](#%EF%B8%8F-secure-deployment)
 
 </div>
 

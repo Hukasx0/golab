@@ -413,7 +413,7 @@ export default ContactForm;
 bun run dev
 
 # Test the API locally
-curl -X POST http://localhost:8787/api/contact \
+curl -X POST http://localhost:3000/api/contact \
   -H "Content-Type: application/json" \
   -H "X-API-Key: your-api-key" \
   -d '{

@@ -165,6 +165,7 @@ describe('ResendEmailService', () => {
     
     const callArgs = (mockSend.mock.calls as any)[0][0];
     expect(callArgs).toBeDefined();
+    expect(callArgs.from).toBe(testFromEmail); // Should use FROM_EMAIL as fallback
     expect(callArgs.to).toEqual(['sender@example.com']);
     expect(callArgs.subject).toBe("Thank you for your message - We'll get back to you soon");
     expect(callArgs.html).toContain('sender@example.com');
@@ -241,5 +242,91 @@ describe('ResendEmailService', () => {
     expect(callArgs).toBeDefined();
     expect(callArgs.html).toContain('example.com');
     expect(callArgs.text).toContain('example.com');
+  });
+// Tests for AUTO_REPLY_FROM_EMAIL functionality
+  describe('AUTO_REPLY_FROM_EMAIL functionality', () => {
+    const testAutoReplyFromEmail = 'Auto Reply <autoreply@test.com>';
+    let emailServiceWithAutoReply: ResendEmailService;
+
+    beforeEach(() => {
+      mockSend.mockClear();
+      emailServiceWithAutoReply = new ResendEmailService(testApiKey, testTargetEmail, testFromEmail, testAutoReplyFromEmail);
+    });
+
+    test('should use AUTO_REPLY_FROM_EMAIL when provided', async () => {
+      const contactData: ContactFormData = {
+        email: 'sender@example.com',
+        subject: 'Test Subject',
+        message: 'This is a test message with enough characters to pass validation.'
+      };
+
+      const result = await emailServiceWithAutoReply.sendAutoReply(contactData);
+
+      expect(result).toBe(true);
+      expect(mockSend).toHaveBeenCalledTimes(1);
+      
+      const callArgs = (mockSend.mock.calls as any)[0][0];
+      expect(callArgs).toBeDefined();
+      expect(callArgs.from).toBe(testAutoReplyFromEmail); // Should use AUTO_REPLY_FROM_EMAIL
+      expect(callArgs.to).toEqual(['sender@example.com']);
+      expect(callArgs.subject).toBe("Thank you for your message - We'll get back to you soon");
+    });
+
+    test('should fallback to FROM_EMAIL when AUTO_REPLY_FROM_EMAIL is undefined', async () => {
+      const emailServiceWithoutAutoReply = new ResendEmailService(testApiKey, testTargetEmail, testFromEmail, undefined);
+      
+      const contactData: ContactFormData = {
+        email: 'sender@example.com',
+        subject: 'Test Subject',
+        message: 'This is a test message with enough characters to pass validation.'
+      };
+
+      const result = await emailServiceWithoutAutoReply.sendAutoReply(contactData);
+
+      expect(result).toBe(true);
+      expect(mockSend).toHaveBeenCalledTimes(1);
+      
+      const callArgs = (mockSend.mock.calls as any)[0][0];
+      expect(callArgs).toBeDefined();
+      expect(callArgs.from).toBe(testFromEmail); // Should fallback to FROM_EMAIL
+    });
+
+    test('should fallback to FROM_EMAIL when AUTO_REPLY_FROM_EMAIL is empty string', async () => {
+      const emailServiceWithEmptyAutoReply = new ResendEmailService(testApiKey, testTargetEmail, testFromEmail, '');
+      
+      const contactData: ContactFormData = {
+        email: 'sender@example.com',
+        subject: 'Test Subject',
+        message: 'This is a test message with enough characters to pass validation.'
+      };
+
+      const result = await emailServiceWithEmptyAutoReply.sendAutoReply(contactData);
+
+      expect(result).toBe(true);
+      expect(mockSend).toHaveBeenCalledTimes(1);
+      
+      const callArgs = (mockSend.mock.calls as any)[0][0];
+      expect(callArgs).toBeDefined();
+      expect(callArgs.from).toBe(testFromEmail); // Should fallback to FROM_EMAIL
+    });
+
+    test('should not affect regular email sending when AUTO_REPLY_FROM_EMAIL is set', async () => {
+      const contactData: ContactFormData = {
+        email: 'sender@example.com',
+        subject: 'Test Subject',
+        message: 'This is a test message with enough characters to pass validation.'
+      };
+
+      const result = await emailServiceWithAutoReply.sendEmail(contactData);
+
+      expect(result).toBe(true);
+      expect(mockSend).toHaveBeenCalledTimes(1);
+      
+      const callArgs = (mockSend.mock.calls as any)[0][0];
+      expect(callArgs).toBeDefined();
+      expect(callArgs.from).toBe(testFromEmail); // Regular emails should still use FROM_EMAIL
+      expect(callArgs.to).toEqual([testTargetEmail]);
+      expect(callArgs.reply_to).toBe('sender@example.com');
+    });
   });
 });

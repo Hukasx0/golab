@@ -73,6 +73,7 @@ export interface Environment extends Record<string, string> {
   FROM_EMAIL: string;
   ALLOWED_ORIGINS?: string;
   ENABLE_AUTO_REPLY?: string;
+  AUTO_REPLY_FROM_EMAIL?: string;
   BANNED_WORDS?: string;
   API_KEY?: string;
   EMAIL_DOMAIN_WHITELIST?: string;

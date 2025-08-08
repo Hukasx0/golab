@@ -43,7 +43,7 @@ describe('Auto-Reply Email Service', () => {
     
     const callArgs = (mockSend.mock.calls as any)[0][0];
     expect(callArgs).toBeDefined();
-    expect(callArgs.from).toBe('noreply@example.com');
+    expect(callArgs.from).toBe('noreply@example.com'); // Should use FROM_EMAIL as fallback
     expect(callArgs.to).toEqual(['sender@example.com']);
     expect(callArgs.subject).toBe('Thank you for your message - We\'ll get back to you soon');
     expect(callArgs.html).toContain('sender@example.com');
@@ -143,5 +143,72 @@ describe('Auto-Reply Email Service', () => {
     expect(callArgs.html).toContain('carrier pigeon');
     expect(callArgs.text).toContain('Gołąb');
     expect(callArgs.text).toContain('carrier pigeon');
+  });
+// Tests for AUTO_REPLY_FROM_EMAIL functionality
+  describe('AUTO_REPLY_FROM_EMAIL functionality', () => {
+    const testAutoReplyFromEmail = 'Auto Reply <autoreply@example.com>';
+    let emailServiceWithAutoReply: ResendEmailService;
+
+    beforeEach(() => {
+      mockSend.mockClear();
+      emailServiceWithAutoReply = new ResendEmailService(
+        'test-api-key',
+        'target@example.com',
+        'noreply@example.com',
+        testAutoReplyFromEmail
+      );
+    });
+
+    test('should use AUTO_REPLY_FROM_EMAIL when provided', async () => {
+      const result = await emailServiceWithAutoReply.sendAutoReply(testFormData);
+
+      expect(result).toBe(true);
+      expect(mockSend).toHaveBeenCalledTimes(1);
+      
+      const callArgs = (mockSend.mock.calls as any)[0][0];
+      expect(callArgs).toBeDefined();
+      expect(callArgs.from).toBe(testAutoReplyFromEmail); // Should use AUTO_REPLY_FROM_EMAIL
+      expect(callArgs.to).toEqual(['sender@example.com']);
+      expect(callArgs.subject).toBe('Thank you for your message - We\'ll get back to you soon');
+    });
+
+    test('should handle AUTO_REPLY_FROM_EMAIL sending failure', async () => {
+      mockSend.mockImplementationOnce(() => Promise.resolve({ data: { id: '' } }));
+
+      const result = await emailServiceWithAutoReply.sendAutoReply(testFormData);
+
+      expect(result).toBe(false);
+      expect(mockSend).toHaveBeenCalledTimes(1);
+      
+      const callArgs = (mockSend.mock.calls as any)[0][0];
+      expect(callArgs.from).toBe(testAutoReplyFromEmail);
+    });
+
+    test('should handle AUTO_REPLY_FROM_EMAIL service error', async () => {
+      mockSend.mockImplementationOnce(() => Promise.reject(new Error('API Error')));
+
+      const result = await emailServiceWithAutoReply.sendAutoReply(testFormData);
+
+      expect(result).toBe(false);
+      expect(mockSend).toHaveBeenCalledTimes(1);
+    });
+
+    test('should sanitize content with AUTO_REPLY_FROM_EMAIL', async () => {
+      const maliciousData: ContactFormData = {
+        email: 'test<script>alert("xss")</script>@example.com',
+        subject: 'Test <img src="x" onerror="alert(1)"> Subject',
+        message: 'Test message'
+      };
+
+      await emailServiceWithAutoReply.sendAutoReply(maliciousData);
+
+      const callArgs = (mockSend.mock.calls as any)[0][0];
+      expect(callArgs).toBeDefined();
+      expect(callArgs.from).toBe(testAutoReplyFromEmail);
+      expect(callArgs.html).not.toContain('<script>');
+      expect(callArgs.html).not.toContain('<img');
+      expect(callArgs.html).toContain('&lt;script&gt;');
+      expect(callArgs.html).toContain('&lt;img');
+    });
   });
 });

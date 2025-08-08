@@ -16,11 +16,13 @@ export class ResendEmailService implements EmailService {
   private resend: Resend;
   private targetEmail: string;
   private fromEmail: string;
+  private autoReplyFromEmail: string;
 
-  constructor(apiKey: string, targetEmail: string, fromEmail: string) {
+  constructor(apiKey: string, targetEmail: string, fromEmail: string, autoReplyFromEmail?: string) {
     this.resend = new Resend(apiKey);
     this.targetEmail = targetEmail;
     this.fromEmail = fromEmail;
+    this.autoReplyFromEmail = autoReplyFromEmail || fromEmail;
   }
 
   /**
@@ -59,7 +61,7 @@ export class ResendEmailService implements EmailService {
       const autoReplyContent = this.generateAutoReplyContent(data);
       
       const result = await this.resend.emails.send({
-        from: this.fromEmail,
+        from: this.autoReplyFromEmail,
         to: [data.email],
         subject: AUTO_REPLY_SUBJECT,
         html: autoReplyContent.html,
@@ -147,5 +149,5 @@ export class ResendEmailService implements EmailService {
  * @returns Email service instance
  */
 export function createEmailService(env: Environment): EmailService {
-  return new ResendEmailService(env.RESEND_API_KEY, env.TARGET_EMAIL, env.FROM_EMAIL);
+  return new ResendEmailService(env.RESEND_API_KEY, env.TARGET_EMAIL, env.FROM_EMAIL, env.AUTO_REPLY_FROM_EMAIL);
 }

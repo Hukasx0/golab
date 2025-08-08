@@ -4,28 +4,40 @@
 
 import { z } from 'zod';
 import type { ContactFormData, ValidationError } from '@/types';
+import {
+  SUBJECT_MAX_LENGTH,
+  MESSAGE_MIN_LENGTH,
+  MESSAGE_MAX_LENGTH,
+  EMAIL_MAX_LENGTH,
+  VALIDATION_LIMITS
+} from './env-config';
 
-// Contact form validation schema
+// Contact form validation schema with configurable limits (build-time)
 export const contactFormSchema = z.object({
   email: z
     .string()
     .min(1, 'Email is required')
     .email('Please provide a valid email address')
-    .max(320, 'Email address is too long'),
+    .max(EMAIL_MAX_LENGTH, 'Email address is too long'), // Email limit is always 320 (RFC 5321 standard)
   
   subject: z
     .string()
     .min(1, 'Subject is required')
-    .max(200, 'Subject must be less than 200 characters')
+    .max(SUBJECT_MAX_LENGTH, `Subject must be less than ${SUBJECT_MAX_LENGTH} characters`)
     .trim(),
   
   message: z
     .string()
     .min(1, 'Message is required')
-    .min(10, 'Message must be at least 10 characters long') // spam protection
-    .max(5000, 'Message must be less than 5000 characters')
+    .min(MESSAGE_MIN_LENGTH, `Message must be at least ${MESSAGE_MIN_LENGTH} characters long`)
+    .max(MESSAGE_MAX_LENGTH, `Message must be less than ${MESSAGE_MAX_LENGTH} characters`)
     .trim()
 });
+
+/**
+ * Re-export the configured limits for use in tests and other modules
+ */
+export { VALIDATION_LIMITS };
 
 /**
  * Validates contact form data

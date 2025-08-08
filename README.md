@@ -218,9 +218,9 @@ X-API-Key: your-secure-api-key-here
 
 | Field | Requirements |
 |-------|-------------|
-| `email` | Valid email format, max 320 characters |
-| `subject` | Required, max 200 characters |
-| `message` | Required, 10-5000 characters |
+| `email` | Valid email format, max 320 characters (RFC 5321 standard) |
+| `subject` | Required, max 200 characters (configurable via `SUBJECT_MAX_LENGTH`) |
+| `message` | Required, default 10-5000 characters (configurable via `MESSAGE_MIN_LENGTH` and `MESSAGE_MAX_LENGTH`) |
 
 ## 🔧 Environment Variables
 
@@ -238,6 +238,9 @@ Complete reference for all configuration options:
 | `EMAIL_DOMAIN_WHITELIST` | Allowed email domains only | ❌ | `yourdomain.com;trusted.org` |
 | `EMAIL_DOMAIN_BLACKLIST` | Blocked email domains | ❌ | `spam.com;malicious.net` |
 | `EMAIL_ADDRESS_BLACKLIST` | Blocked specific email addresses | ❌ | `spammer@example.com;bad@domain.com` |
+| `SUBJECT_MAX_LENGTH` | Optional override for subject max length (>=1). Default: 200 | ❌ | `150` |
+| `MESSAGE_MIN_LENGTH` | Optional override for message min length (>=1). Default: 10 | ❌ | `5` |
+| `MESSAGE_MAX_LENGTH` | Optional override for message max length (>=1). Default: 5000 | ❌ | `2000` |
 
 ### Setting Environment Variables
 
@@ -283,7 +286,7 @@ The project maintains a **<1MB bundle size** to comply with [Cloudflare Workers 
 <form id="contactForm">
     <input type="email" name="email" required>
     <input type="text" name="subject" required>
-    <textarea name="message" required minlength="10"></textarea>
+        <textarea name="message" required minlength="10"></textarea>
     <button type="submit">Send Message</button>
 </form>
 
@@ -299,7 +302,7 @@ document.getElementById('contactForm').addEventListener('submit', async (e) => {
     };
 
     try {
-        const response = await fetch('https://your-api.workers.dev/api/contact', {
+            const response = await fetch('https://your-api.workers.dev/api/contact', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -381,7 +384,7 @@ const ContactForm = () => {
                 value={formData.message}
                 onChange={(e) => setFormData({...formData, message: e.target.value})}
                 required
-                minLength={10}
+                minLength={10} // frontend hint; backend enforces defaults or ENV overrides
             />
             <button type="submit" disabled={isLoading}>
                 {isLoading ? 'Sending...' : 'Send Message 🕊️'}

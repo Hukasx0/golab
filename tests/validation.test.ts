@@ -3,7 +3,7 @@
  */
 
 import { expect, test, describe, mock } from 'bun:test';
-import { validateContactForm, sanitizeText, isValidEmail, containsBannedWords, validateApiKey, extractEmailDomain, isEmailAllowed } from '@/utils/validation';
+import { validateContactForm, sanitizeText, isValidEmail, containsBannedWords, validateApiKey, extractEmailDomain, isEmailAllowed, VALIDATION_LIMITS } from '@/utils/validation';
 import type { ContactFormData } from '@/types';
 
 describe('Contact Form Validation', () => {
@@ -78,13 +78,13 @@ describe('Contact Form Validation', () => {
     expect(result.success).toBe(false);
     expect(result.errors).toBeDefined();
     expect(result.errors?.[0]?.field).toBe('message');
-    expect(result.errors?.[0]?.message).toContain('at least 10 characters');
+    expect(result.errors?.[0]?.message).toContain(`at least ${VALIDATION_LIMITS.MESSAGE_MIN_LENGTH} characters`);
   });
 
   test('should reject too long subject', () => {
     const invalidData = {
       email: 'test@example.com',
-      subject: 'A'.repeat(201), // 201 characters
+      subject: 'A'.repeat(VALIDATION_LIMITS.SUBJECT_MAX_LENGTH + 1), // One character over limit
       message: 'This is a test message with enough characters.'
     };
 
@@ -93,14 +93,14 @@ describe('Contact Form Validation', () => {
     expect(result.success).toBe(false);
     expect(result.errors).toBeDefined();
     expect(result.errors?.[0]?.field).toBe('subject');
-    expect(result.errors?.[0]?.message).toContain('less than 200 characters');
+    expect(result.errors?.[0]?.message).toContain(`less than ${VALIDATION_LIMITS.SUBJECT_MAX_LENGTH} characters`);
   });
 
   test('should reject too long message', () => {
     const invalidData = {
       email: 'test@example.com',
       subject: 'Test Subject',
-      message: 'A'.repeat(5001) // 5001 characters
+      message: 'A'.repeat(VALIDATION_LIMITS.MESSAGE_MAX_LENGTH + 1) // One character over limit
     };
 
     const result = validateContactForm(invalidData);
@@ -108,7 +108,7 @@ describe('Contact Form Validation', () => {
     expect(result.success).toBe(false);
     expect(result.errors).toBeDefined();
     expect(result.errors?.[0]?.field).toBe('message');
-    expect(result.errors?.[0]?.message).toContain('less than 5000 characters');
+    expect(result.errors?.[0]?.message).toContain(`less than ${VALIDATION_LIMITS.MESSAGE_MAX_LENGTH} characters`);
   });
 
   test('should handle multiple validation errors', () => {
@@ -165,6 +165,120 @@ test('should handle non-Zod validation errors', () => {
     expect(result.errors).toBeDefined();
     expect(result.errors?.[0]?.field).toBe('unknown');
     expect(result.errors?.[0]?.message).toBe('Validation failed');
+  });
+});
+
+describe('Validation Limits Configuration', () => {
+  test('should export validation limits constants', () => {
+    expect(VALIDATION_LIMITS).toBeDefined();
+    expect(typeof VALIDATION_LIMITS.SUBJECT_MAX_LENGTH).toBe('number');
+    expect(typeof VALIDATION_LIMITS.MESSAGE_MIN_LENGTH).toBe('number');
+    expect(typeof VALIDATION_LIMITS.MESSAGE_MAX_LENGTH).toBe('number');
+    expect(typeof VALIDATION_LIMITS.EMAIL_MAX_LENGTH).toBe('number');
+  });
+
+  test('should have reasonable default values', () => {
+    // These should be the default values when no env vars are set
+    expect(VALIDATION_LIMITS.SUBJECT_MAX_LENGTH).toBeGreaterThan(0);
+    expect(VALIDATION_LIMITS.MESSAGE_MIN_LENGTH).toBeGreaterThan(0);
+    expect(VALIDATION_LIMITS.MESSAGE_MAX_LENGTH).toBeGreaterThan(VALIDATION_LIMITS.MESSAGE_MIN_LENGTH);
+    expect(VALIDATION_LIMITS.EMAIL_MAX_LENGTH).toBe(320); // Fixed value
+  });
+
+  test('should validate subject at exact limit', () => {
+    const validData = {
+      email: 'test@example.com',
+      subject: 'A'.repeat(VALIDATION_LIMITS.SUBJECT_MAX_LENGTH), // Exactly at limit
+      message: 'This is a test message with enough characters.'
+    };
+
+    const result = validateContactForm(validData);
+    expect(result.success).toBe(true);
+  });
+
+  test('should validate message at exact minimum length', () => {
+    const validData = {
+      email: 'test@example.com',
+      subject: 'Test Subject',
+      message: 'A'.repeat(VALIDATION_LIMITS.MESSAGE_MIN_LENGTH) // Exactly at minimum
+    };
+
+    const result = validateContactForm(validData);
+    expect(result.success).toBe(true);
+  });
+
+  test('should validate message at exact maximum length', () => {
+    const validData = {
+      email: 'test@example.com',
+      subject: 'Test Subject',
+      message: 'A'.repeat(VALIDATION_LIMITS.MESSAGE_MAX_LENGTH) // Exactly at maximum
+    };
+
+    const result = validateContactForm(validData);
+    expect(result.success).toBe(true);
+  });
+
+  test('should validate email at exact maximum length', () => {
+    // Create an email exactly 320 characters long
+    const localPart = 'a'.repeat(64); // Max local part length
+    const domain = 'b'.repeat(251) + '.com'; // Domain part to make total 320
+    const email = `${localPart}@${domain}`;
+    
+    expect(email.length).toBe(320);
+
+    const validData = {
+      email: email,
+      subject: 'Test Subject',
+      message: 'This is a test message with enough characters.'
+    };
+
+    const result = validateContactForm(validData);
+    expect(result.success).toBe(true);
+  });
+
+  test('should reject email over maximum length', () => {
+    // Create an email over 320 characters
+    const localPart = 'a'.repeat(64);
+    const domain = 'b'.repeat(252) + '.com'; // One character too long
+    const email = `${localPart}@${domain}`;
+    
+    expect(email.length).toBe(321);
+
+    const invalidData = {
+      email: email,
+      subject: 'Test Subject',
+      message: 'This is a test message with enough characters.'
+    };
+
+    const result = validateContactForm(invalidData);
+    expect(result.success).toBe(false);
+    expect(result.errors?.[0]?.field).toBe('email');
+    expect(result.errors?.[0]?.message).toContain('too long');
+  });
+
+  test('should reject message one character below minimum', () => {
+    const invalidData = {
+      email: 'test@example.com',
+      subject: 'Test Subject',
+      message: 'A'.repeat(VALIDATION_LIMITS.MESSAGE_MIN_LENGTH - 1) // One character below minimum
+    };
+
+    const result = validateContactForm(invalidData);
+    expect(result.success).toBe(false);
+    expect(result.errors?.[0]?.field).toBe('message');
+    expect(result.errors?.[0]?.message).toContain(`at least ${VALIDATION_LIMITS.MESSAGE_MIN_LENGTH} characters`);
+  });
+
+  test('should handle edge case with minimum possible values', () => {
+    // Test that the limits are at least 1 (as enforced by parseEnvLimit)
+    expect(VALIDATION_LIMITS.SUBJECT_MAX_LENGTH).toBeGreaterThanOrEqual(1);
+    expect(VALIDATION_LIMITS.MESSAGE_MIN_LENGTH).toBeGreaterThanOrEqual(1);
+    expect(VALIDATION_LIMITS.MESSAGE_MAX_LENGTH).toBeGreaterThanOrEqual(1);
+  });
+
+  test('should ensure message max is greater than message min', () => {
+    // This should always be true with reasonable defaults
+    expect(VALIDATION_LIMITS.MESSAGE_MAX_LENGTH).toBeGreaterThan(VALIDATION_LIMITS.MESSAGE_MIN_LENGTH);
   });
 });
 

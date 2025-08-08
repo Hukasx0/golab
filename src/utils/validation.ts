@@ -13,7 +13,8 @@ import {
 } from './env-config';
 
 // Contact form validation schema with configurable limits (build-time)
-export const contactFormSchema = z.object({
+// Using strictObject to reject any additional fields
+export const contactFormSchema = z.strictObject({
   email: z
     .string()
     .min(1, 'Email is required')
@@ -57,6 +58,23 @@ export function validateContactForm(data: unknown): {
     };
   } catch (error) {
     if (error instanceof z.ZodError) {
+      // Check if error contains unrecognized keys (additional fields)
+      const hasUnrecognizedKeys = error.errors.some(err => err.code === 'unrecognized_keys');
+      
+      if (hasUnrecognizedKeys) {
+        // Log potential bot/honeypot attempt
+        const unrecognizedFields = error.errors
+          .filter(err => err.code === 'unrecognized_keys')
+          .map(err => (err as any).keys)
+          .flat();
+          
+        console.warn('Contact form rejected: Additional fields detected (potential bot)', {
+          unrecognizedFields,
+          timestamp: new Date().toISOString(),
+          requestData: typeof data === 'object' && data !== null ? Object.keys(data) : 'invalid'
+        });
+      }
+      
       const validationErrors: ValidationError[] = error.errors.map(err => ({
         field: err.path.join('.'),
         message: err.message

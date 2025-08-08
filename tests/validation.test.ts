@@ -166,6 +166,68 @@ test('should handle non-Zod validation errors', () => {
     expect(result.errors?.[0]?.field).toBe('unknown');
     expect(result.errors?.[0]?.message).toBe('Validation failed');
   });
+
+  test('should reject data with additional fields (strict validation)', () => {
+    const dataWithExtraFields = {
+      email: 'test@example.com',
+      subject: 'Test Subject',
+      message: 'This is a test message with enough characters.',
+      website: 'https://bot-site.com', // Additional field (honeypot)
+      phone: '123-456-7890' // Another additional field (honeypot)
+    };
+
+    const result = validateContactForm(dataWithExtraFields);
+
+    expect(result.success).toBe(false);
+    expect(result.errors).toBeDefined();
+    expect(result.errors?.some(err => err.message.includes('Unrecognized key'))).toBe(true);
+  });
+
+  test('should reject data with honeypot field (bot detection)', () => {
+    const dataWithHoneypot = {
+      email: 'test@example.com',
+      subject: 'Test Subject',
+      message: 'This is a test message with enough characters.',
+      website: 'filled-by-bot' // Honeypot field that should be empty
+    };
+
+    const result = validateContactForm(dataWithHoneypot);
+
+    expect(result.success).toBe(false);
+    expect(result.errors).toBeDefined();
+    expect(result.errors?.some(err => err.message.includes('Unrecognized key'))).toBe(true);
+  });
+
+  test('should reject data with multiple additional fields', () => {
+    const dataWithMultipleExtraFields = {
+      email: 'test@example.com',
+      subject: 'Test Subject',
+      message: 'This is a test message with enough characters.',
+      website: 'bot-filled',
+      phone: '123-456-7890',
+      company: 'Bot Corp'
+    };
+
+    const result = validateContactForm(dataWithMultipleExtraFields);
+
+    expect(result.success).toBe(false);
+    expect(result.errors).toBeDefined();
+    expect(result.errors?.some(err => err.message.includes('Unrecognized key'))).toBe(true);
+  });
+
+  test('should allow data with only valid fields', () => {
+    const validData = {
+      email: 'test@example.com',
+      subject: 'Test Subject',
+      message: 'This is a test message with enough characters.'
+    };
+
+    const result = validateContactForm(validData);
+
+    expect(result.success).toBe(true);
+    expect(result.data).toEqual(validData);
+    expect(result.errors).toBeUndefined();
+  });
 });
 
 describe('Validation Limits Configuration', () => {

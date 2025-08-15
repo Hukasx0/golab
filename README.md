@@ -300,6 +300,7 @@ Complete reference for all configuration options:
 | `RATE_LIMIT_EMAIL_ENABLED` | Enable per-email rate limiting. Default: true | ❌ | `true` |
 | `RATE_LIMIT_EMAIL_LIMIT` | Emails per email address per window. Default: 1 | ❌ | `2` |
 | `RATE_LIMIT_EMAIL_WINDOW` | Email time window in seconds. Default: 3600 | ❌ | `900` |
+| `RATE_LIMIT_REDIS_FAILURE_MODE` | Redis failure behavior: "open" (allow) or "closed" (block). Default: "open" | ❌ | `closed` |
 
 ### Setting Environment Variables
 
@@ -592,6 +593,9 @@ RATE_LIMIT_EMAIL_WINDOW=3600
 RATE_LIMIT_IP_ENABLED=false
 RATE_LIMIT_IP_LIMIT=5
 RATE_LIMIT_IP_WINDOW=3600
+
+# Redis failure handling (default: "open")
+RATE_LIMIT_REDIS_FAILURE_MODE=open
 ```
 
 ### 🏗️ Rate Limiting Flow
@@ -643,7 +647,7 @@ graph TB
 
 ### 🛡️ Security Features
 
-- **Fail-Open Design**: If Redis is unavailable, requests are allowed
+- **Configurable Failure Mode**: Choose between fail-open (allow) or fail-closed (block) when Redis is unavailable
 - **Real IP Detection**: Uses `CF-Connecting-IP` for accurate IP identification
 - **Successful Email Counting**: Only counts emails that were actually sent
 - **Auto-reply Exclusion**: Auto-reply emails don't count toward limits
@@ -670,8 +674,20 @@ Rate limiting events are logged for monitoring:
 1. **Get Upstash Redis**: Sign up at [console.upstash.com](https://console.upstash.com/)
 2. **Configure Environment**: Set `RATE_LIMITING=true` in build config
 3. **Add Redis Credentials**: Set `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`
-4. **Customize Limits**: Adjust rate limiting settings as needed
-5. **Deploy**: Rate limiting is automatically active
+4. **Configure Failure Mode**: Set `RATE_LIMIT_REDIS_FAILURE_MODE` to `"open"` or `"closed"`
+5. **Customize Limits**: Adjust rate limiting settings as needed
+6. **Deploy**: Rate limiting is automatically active
+
+### 🔧 Redis Failure Modes
+
+**Fail Open (Default - `"open"`)**:
+- ✅ High availability - requests continue when Redis fails
+- ⚠️ Temporary loss of rate limiting protection
+
+**Fail Closed (`"closed"`)**:
+- 🛡️ Maximum security - no requests bypass rate limiting
+- ⚠️ Service unavailable when Redis fails
+- 📝 Recommended for high-security environments with Redis redundancy
 
 ## 🤝 Contributing
 

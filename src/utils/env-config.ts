@@ -102,6 +102,29 @@ export const EMAIL_MAX_LENGTH = 320;
 // Rate limiting configuration (build-time)
 export const RATE_LIMITING_ENABLED = parseEnvBoolean('RATE_LIMITING', false);
 
+// Redis failure mode configuration (build-time)
+export const RATE_LIMIT_REDIS_FAILURE_MODE = (() => {
+  const envValue = process.env['RATE_LIMIT_REDIS_FAILURE_MODE'];
+  
+  // If not set or empty, use default
+  if (!envValue || envValue.trim() === '') {
+    return 'open';
+  }
+  
+  const normalizedValue = envValue.trim().toLowerCase();
+  
+  // Accept valid values
+  if (normalizedValue === 'open' || normalizedValue === 'closed') {
+    return normalizedValue as 'open' | 'closed';
+  }
+  
+  // Invalid value, warn and use default
+  console.warn(
+    `⚠️  [Gołąb] Invalid RATE_LIMIT_REDIS_FAILURE_MODE="${envValue}". Must be "open" or "closed". Using default: "open"`
+  );
+  return 'open';
+})();
+
 // Export all limits as a const object for convenience
 export const VALIDATION_LIMITS = {
   SUBJECT_MAX_LENGTH,

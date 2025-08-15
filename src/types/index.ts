@@ -125,6 +125,7 @@ export interface RateLimitConfig {
     limit: number;
     window: number; // seconds
   };
+  redisFailureMode: 'open' | 'closed';
 }
 
 /**

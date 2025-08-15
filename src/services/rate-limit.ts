@@ -5,6 +5,7 @@
 
 import { Redis } from '@upstash/redis';
 import type { Environment, RateLimitConfig, RateLimitResult, RateLimitService } from '@/types';
+import { RATE_LIMIT_REDIS_FAILURE_MODE } from '@/utils/env-config';
 
 /**
  * Rate limiting service implementation using Upstash Redis
@@ -66,7 +67,14 @@ export class UpstashRateLimitService implements RateLimitService {
 
     } catch (error) {
       console.error('Rate limit check failed:', error);
-      // On Redis failure, allow the request (fail open)
+      // Handle Redis failure based on configuration
+      if (this.config.redisFailureMode === 'closed') {
+        return {
+          allowed: false,
+          reason: 'Rate limit exceeded'
+        };
+      }
+      // Default: fail open - allow the request
       return { allowed: true };
     }
   }
@@ -144,7 +152,14 @@ export class UpstashRateLimitService implements RateLimitService {
 
     } catch (error) {
       console.error(`Failed to check ${type} rate limit:`, error);
-      // On error, allow the request (fail open)
+      // Handle Redis failure based on configuration
+      if (this.config.redisFailureMode === 'closed') {
+        return {
+          allowed: false,
+          reason: 'Rate limit exceeded'
+        };
+      }
+      // Default: fail open - allow the request
       return { allowed: true };
     }
   }
@@ -188,7 +203,7 @@ export class UpstashRateLimitService implements RateLimitService {
 export function parseRateLimitConfig(env: Environment): RateLimitConfig {
   return {
     global: {
-      enabled: env.RATE_LIMIT_GLOBAL_ENABLED?.toLowerCase() === 'true' || 
+      enabled: env.RATE_LIMIT_GLOBAL_ENABLED?.toLowerCase() === 'true' ||
                (env.RATE_LIMIT_GLOBAL_ENABLED === undefined && true), // Default: enabled
       limit: parseInt(env.RATE_LIMIT_GLOBAL_LIMIT || '10', 10),
       window: parseInt(env.RATE_LIMIT_GLOBAL_WINDOW || '3600', 10) // Default: 1 hour
@@ -199,11 +214,12 @@ export function parseRateLimitConfig(env: Environment): RateLimitConfig {
       window: parseInt(env.RATE_LIMIT_IP_WINDOW || '3600', 10) // Default: 1 hour
     },
     email: {
-      enabled: env.RATE_LIMIT_EMAIL_ENABLED?.toLowerCase() === 'true' || 
+      enabled: env.RATE_LIMIT_EMAIL_ENABLED?.toLowerCase() === 'true' ||
                (env.RATE_LIMIT_EMAIL_ENABLED === undefined && true), // Default: enabled
       limit: parseInt(env.RATE_LIMIT_EMAIL_LIMIT || '1', 10),
       window: parseInt(env.RATE_LIMIT_EMAIL_WINDOW || '3600', 10) // Default: 1 hour
-    }
+    },
+    redisFailureMode: RATE_LIMIT_REDIS_FAILURE_MODE
   };
 }
 

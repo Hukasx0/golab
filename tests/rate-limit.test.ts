@@ -198,6 +198,73 @@ describe('Rate Limiting Service', () => {
     const service = createRateLimitService(env);
     expect(service).toBeNull();
   });
+
+  test('should handle Redis failure mode configuration', async () => {
+    // Since RATE_LIMIT_REDIS_FAILURE_MODE is parsed at build time,
+    // we need to test the parseRateLimitConfig function directly
+    // and verify it uses the build-time parsed value
+    const { parseRateLimitConfig } = await import('@/services/rate-limit');
+    
+    const env: Environment = {
+      TARGET_EMAIL: 'test@example.com',
+      RESEND_API_KEY: 'test-key',
+      FROM_EMAIL: 'Test <noreply@test.com>'
+    };
+
+    const config = parseRateLimitConfig(env);
+    
+    // The config should include the redisFailureMode field
+    expect(config.redisFailureMode).toBeDefined();
+    expect(['open', 'closed']).toContain(config.redisFailureMode);
+    
+    // Test that the configuration structure is correct
+    expect(config).toHaveProperty('global');
+    expect(config).toHaveProperty('ip');
+    expect(config).toHaveProperty('email');
+    expect(config).toHaveProperty('redisFailureMode');
+  });
+
+  test('should handle Redis failure in checkRateLimit method based on failure mode', async () => {
+    const { UpstashRateLimitService } = await import('@/services/rate-limit');
+    
+    const config = {
+      global: { enabled: true, limit: 10, window: 3600 },
+      ip: { enabled: false, limit: 5, window: 3600 },
+      email: { enabled: true, limit: 1, window: 3600 },
+      redisFailureMode: 'closed' as const
+    };
+
+    const service = new UpstashRateLimitService('https://test.upstash.io', 'test-token', config);
+    
+    // Mock Redis to throw an error
+    mockRedisGet.mockImplementation(() => Promise.reject(new Error('Redis connection failed')));
+
+    const result = await service.checkRateLimit('192.168.1.1', 'test@example.com');
+    
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toBe('Rate limit exceeded');
+  });
+
+  test('should handle Redis failure in checkRateLimit method with open mode', async () => {
+    const { UpstashRateLimitService } = await import('@/services/rate-limit');
+    
+    const config = {
+      global: { enabled: true, limit: 10, window: 3600 },
+      ip: { enabled: false, limit: 5, window: 3600 },
+      email: { enabled: true, limit: 1, window: 3600 },
+      redisFailureMode: 'open' as const
+    };
+
+    const service = new UpstashRateLimitService('https://test.upstash.io', 'test-token', config);
+    
+    // Mock Redis to throw an error
+    mockRedisGet.mockImplementation(() => Promise.reject(new Error('Redis connection failed')));
+
+    const result = await service.checkRateLimit('192.168.1.1', 'test@example.com');
+    
+    expect(result.allowed).toBe(true);
+    expect(result.reason).toBeUndefined();
+  });
 });
 
 describe('Rate Limiting Integration', () => {
@@ -484,10 +551,12 @@ describe('Rate Limiting Integration', () => {
     }
   });
 
-  test('should fail gracefully when Redis is unavailable', async () => {
+  test('should fail gracefully when Redis is unavailable (default fail-open behavior)', async () => {
     // Mock RATE_LIMITING_ENABLED to be true for this test
     const originalRateLimitingEnabled = process.env['RATE_LIMITING'];
+    const originalFailureMode = process.env['RATE_LIMIT_REDIS_FAILURE_MODE'];
     process.env['RATE_LIMITING'] = 'true';
+    // Don't set RATE_LIMIT_REDIS_FAILURE_MODE to test default behavior
 
     // Mock Redis to throw an error
     mockRedisGet.mockImplementation(() => Promise.reject(new Error('Redis connection failed')));
@@ -524,11 +593,96 @@ describe('Rate Limiting Integration', () => {
     expect((responseData as any).success).toBe(true);
     expect(mockSendEmail).toHaveBeenCalledTimes(1);
 
-    // Restore original value
+    // Restore original values
     if (originalRateLimitingEnabled !== undefined) {
       process.env['RATE_LIMITING'] = originalRateLimitingEnabled;
     } else {
       delete process.env['RATE_LIMITING'];
     }
+    if (originalFailureMode !== undefined) {
+      process.env['RATE_LIMIT_REDIS_FAILURE_MODE'] = originalFailureMode;
+    } else {
+      delete process.env['RATE_LIMIT_REDIS_FAILURE_MODE'];
+    }
+  });
+
+  test('should fail open when Redis is unavailable and failure mode is explicitly set to open', async () => {
+    // Mock environment variables
+    const originalRateLimitingEnabled = process.env['RATE_LIMITING'];
+    const originalFailureMode = process.env['RATE_LIMIT_REDIS_FAILURE_MODE'];
+    process.env['RATE_LIMITING'] = 'true';
+    process.env['RATE_LIMIT_REDIS_FAILURE_MODE'] = 'open';
+
+    // Mock Redis to throw an error
+    mockRedisGet.mockImplementation(() => Promise.reject(new Error('Redis connection failed')));
+
+    const validData = {
+      email: 'test@example.com',
+      subject: 'Test Subject',
+      message: 'This is a test message with enough characters to pass validation.'
+    };
+
+    const env: Environment = {
+      TARGET_EMAIL: 'target@example.com',
+      RESEND_API_KEY: 'test-key',
+      FROM_EMAIL: 'Test Form <noreply@test.com>',
+      ALLOWED_ORIGINS: '*',
+      UPSTASH_REDIS_REST_URL: 'https://test-redis.upstash.io',
+      UPSTASH_REDIS_REST_TOKEN: 'test-token'
+    };
+
+    const req = new Request('http://localhost/api/contact', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'CF-Connecting-IP': '192.168.1.100'
+      },
+      body: JSON.stringify(validData)
+    });
+
+    const res = await app.fetch(req, env);
+    const responseData = await res.json();
+
+    // Should allow request when Redis fails (fail-open behavior)
+    expect(res.status).toBe(200);
+    expect((responseData as any).success).toBe(true);
+    expect(mockSendEmail).toHaveBeenCalledTimes(1);
+
+    // Restore original values
+    if (originalRateLimitingEnabled !== undefined) {
+      process.env['RATE_LIMITING'] = originalRateLimitingEnabled;
+    } else {
+      delete process.env['RATE_LIMITING'];
+    }
+    if (originalFailureMode !== undefined) {
+      process.env['RATE_LIMIT_REDIS_FAILURE_MODE'] = originalFailureMode;
+    } else {
+      delete process.env['RATE_LIMIT_REDIS_FAILURE_MODE'];
+    }
+  });
+
+  test('should fail closed when Redis is unavailable and failure mode is set to closed', async () => {
+    // Since the failure mode is parsed at build time, we need to test this
+    // by directly creating a service with closed mode configuration
+    const { UpstashRateLimitService } = await import('@/services/rate-limit');
+    
+    // Create a service with closed failure mode
+    const closedConfig = {
+      global: { enabled: true, limit: 10, window: 3600 },
+      ip: { enabled: false, limit: 5, window: 3600 },
+      email: { enabled: true, limit: 1, window: 3600 },
+      redisFailureMode: 'closed' as const
+    };
+
+    const service = new UpstashRateLimitService('https://test.upstash.io', 'test-token', closedConfig);
+    
+    // Mock Redis to throw an error
+    mockRedisGet.mockImplementation(() => Promise.reject(new Error('Redis connection failed')));
+
+    const result = await service.checkRateLimit('192.168.1.1', 'test@example.com');
+    
+    // Should block request when Redis fails (fail-closed behavior)
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toBe('Rate limit exceeded');
   });
 });

@@ -24,11 +24,12 @@
 ## ✨ Key Features
 
 - **🚀 Lightning Fast** - Built with Hono on Cloudflare's global edge network
-- **🔒 Secure** - API key, content filtering and optional WAF
+- **🔒 Secure** - API key, content filtering, rate limiting and optional WAF
 - **📧 Reliable Delivery** - Powered by Resend API, optional auto-reply support
 - **⚡ Optimized Bundle** - <1MB bundle size compliant with Cloudflare Workers limits
 - **🌍 Global Edge** - Runs on Cloudflare's worldwide network for minimal latency
 - **🔑 Flexible Auth** - Optional API key authentication
+- **⏱️ Smart Rate Limiting** - Upstash Redis-powered rate limiting with flexible configuration
 - **📱 CORS Ready** - Works seamlessly with any frontend framework
 
 ## 🏗️ Architecture Overview
@@ -39,13 +40,21 @@ graph TB
     B --> C[API Key Validation]
     B --> D[Input Validation]
     B --> E[Content Filtering]
-    B --> F[Email Service]
-    F --> G[Your Inbox]
+    B --> F[Rate Limiting Check]
+    F --> G[Email Service]
+    G --> H[Rate Limiting Increment]
+    G --> I[Your Inbox]
+    
+    F --> J[(Upstash Redis)]
+    H --> J
     
     style A fill:#e1f5fe
     style B fill:#e8f5e8
-    style F fill:#f3e5f5
-    style G fill:#e0f2f1
+    style F fill:#fff3e0
+    style G fill:#f3e5f5
+    style H fill:#fff3e0
+    style I fill:#e0f2f1
+    style J fill:#ffebee
 ```
 
 ## 🔒 Security Architecture
@@ -73,6 +82,7 @@ graph LR
     D2[Input Validation] --> D
     D3[Banned Words] --> D
     D4[Email Filtering] --> D
+    D5[Rate Limiting] --> D
     
     style B fill:#fff3e0
     style C fill:#ffebee
@@ -123,11 +133,33 @@ wrangler secret put RESEND_API_KEY
 # Recommended: API key for security
 wrangler secret put API_KEY
 # Enter: $(openssl rand -base64 32)
+
+# Optional: Rate limiting with Upstash Redis
+wrangler secret put UPSTASH_REDIS_REST_URL
+# Enter: https://your-redis-instance.upstash.io
+
+wrangler secret put UPSTASH_REDIS_REST_TOKEN
+# Enter: your-redis-token
 ```
 
 You can also use wrangler after `bun install` like this `bun run wrangler <arguments>` (If you are in the project folder of course)
 
-### 3. Configure CORS
+### 3. Configure Rate Limiting (Optional)
+
+Edit [`wrangler.toml`](wrangler.toml) to enable rate limiting:
+
+```toml
+[vars]
+# Enable rate limiting (requires Upstash Redis configuration)
+RATE_LIMITING = "true"
+
+# Optional: Customize rate limiting settings
+RATE_LIMIT_GLOBAL_LIMIT = "10"      # 10 emails per hour globally
+RATE_LIMIT_EMAIL_LIMIT = "1"        # 1 email per hour per email address
+RATE_LIMIT_IP_ENABLED = "false"     # Disable per-IP limiting (recommended for proxied setups)
+```
+
+### 4. Configure CORS
 
 Edit [`wrangler.toml`](wrangler.toml):
 
@@ -140,17 +172,17 @@ ALLOWED_ORIGINS = "https://yourdomain.com,https://www.yourdomain.com"
 # ALLOWED_ORIGINS = "*"
 ```
 
-### 4. Deploy to Cloudflare Workers
+### 5. Deploy to Cloudflare Workers
 
 ```bash
 # Deploy to production
 bun run deploy
 
-# Deploy to development environment  
+# Deploy to development environment
 bun run deploy:dev
 ```
 
-### 5. Configure WAF Protection (Optional, but Recommended)
+### 6. Configure WAF Protection (Optional, but Recommended)
 
 In your Cloudflare dashboard (**Security** → **WAF** → **Custom Rules**):
 
@@ -214,6 +246,20 @@ X-API-Key: your-secure-api-key-here
 }
 ```
 
+**Rate Limited (429)**:
+```json
+{
+  "error": "Rate limit exceeded",
+  "details": [
+    {
+      "field": "rate_limit",
+      "message": "Rate limit exceeded for global"
+    }
+  ],
+  "timestamp": "2025-01-01T12:00:00.000Z"
+}
+```
+
 ### Validation Rules
 
 | Field | Requirements |
@@ -242,6 +288,18 @@ Complete reference for all configuration options:
 | `SUBJECT_MAX_LENGTH` | Optional override for subject max length (>=1). Default: 200 | ❌ | `150` |
 | `MESSAGE_MIN_LENGTH` | Optional override for message min length (>=1). Default: 10 | ❌ | `5` |
 | `MESSAGE_MAX_LENGTH` | Optional override for message max length (>=1). Default: 5000 | ❌ | `2000` |
+| `RATE_LIMITING` | Enable rate limiting (build-time). Default: false | ❌ | `true` |
+| `UPSTASH_REDIS_REST_URL` | Upstash Redis REST URL (required when rate limiting enabled) | ❌ | `https://your-redis.upstash.io` |
+| `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis REST token (required when rate limiting enabled) | ❌ | `your-redis-token` |
+| `RATE_LIMIT_GLOBAL_ENABLED` | Enable global rate limiting. Default: true | ❌ | `true` |
+| `RATE_LIMIT_GLOBAL_LIMIT` | Global emails per window. Default: 10 | ❌ | `20` |
+| `RATE_LIMIT_GLOBAL_WINDOW` | Global time window in seconds. Default: 3600 | ❌ | `7200` |
+| `RATE_LIMIT_IP_ENABLED` | Enable per-IP rate limiting. Default: false | ❌ | `true` |
+| `RATE_LIMIT_IP_LIMIT` | Emails per IP per window. Default: 5 | ❌ | `3` |
+| `RATE_LIMIT_IP_WINDOW` | IP time window in seconds. Default: 3600 | ❌ | `1800` |
+| `RATE_LIMIT_EMAIL_ENABLED` | Enable per-email rate limiting. Default: true | ❌ | `true` |
+| `RATE_LIMIT_EMAIL_LIMIT` | Emails per email address per window. Default: 1 | ❌ | `2` |
+| `RATE_LIMIT_EMAIL_WINDOW` | Email time window in seconds. Default: 3600 | ❌ | `900` |
 
 ### Setting Environment Variables
 
@@ -406,6 +464,7 @@ export default ContactForm;
 - [ ] **CORS Configured** (specific domains, no wildcards in production)
 - [ ] **Gateway Implemented** (CAPTCHA + hidden API key + optional honeypot)
 - [ ] **Content Filtering** (banned words, email filtering)
+- [ ] **Rate Limiting Configured** (Upstash Redis + appropriate limits)
 - [ ] **Monitoring Setup** (Cloudflare analytics, alerts)
 
 ## 🧪 Development & Testing
@@ -449,10 +508,12 @@ golab/
 │   ├── handlers/
 │   │   └── contact.ts        # Contact form handler
 │   ├── services/
-│   │   └── email.ts          # Email service (Resend)
+│   │   ├── email.ts          # Email service (Resend)
+│   │   └── rate-limit.ts     # Rate limiting service (Upstash Redis)
 │   ├── utils/
 │   │   ├── validation.ts     # Input validation & security
-│   │   └── cors.ts           # CORS utilities
+│   │   ├── cors.ts           # CORS utilities
+│   │   └── env-config.ts     # Build-time environment configuration
 │   └── types/
 │       └── index.ts          # TypeScript definitions
 ├── templates/
@@ -467,12 +528,12 @@ golab/
 
 ## 🔒 Security Features (with recommendations)
 
-- **🛡️ Multi-layer Protection**: WAF + API + Content filtering
+- **🛡️ Multi-layer Protection**: WAF + API + Content filtering + Rate limiting
 - **🔑 API Key Authentication**: Optional secure access control
 - **🚫 Content Filtering**: Banned words and email domain filtering
 - **🤖 Bot Protection**: Cloudflare's advanced bot management
 - **🌍 Geographic Filtering**: Optional country-based restrictions
-- **⚡ Rate Limiting**: Configurable request limits per IP
+- **⚡ Smart Rate Limiting**: Redis-powered limits (global, per-IP, per-email)
 - **🔒 Input Validation**: Zod schema validation with sanitization
 - **📧 Email Security**: Reply-to headers for safe communication
 
@@ -483,6 +544,134 @@ golab/
 - **🎨 Beautiful Templates**: Type-safe HTML and text templates
 - **📍 Source Tracking**: Automatic domain and timestamp logging
 - **🛡️ XSS Protection**: Content sanitization for email safety
+
+## ⚡ Rate Limiting
+
+Gołąb includes advanced rate limiting powered by Upstash Redis to protect against spam and abuse.
+
+### 🎯 Rate Limiting Types
+
+#### 1. **Global Rate Limiting** (Default: 10 emails/hour)
+- Limits total successful emails across all users
+- Protects against coordinated attacks
+- Default: **Enabled** with 10 emails per hour
+
+#### 2. **Per-Email Rate Limiting** (Default: 1 email/hour)
+- Limits successful emails per sender email address
+- Prevents individual email abuse
+- Default: **Enabled** with 1 email per hour
+
+#### 3. **Per-IP Rate Limiting** (Default: Disabled)
+- Limits successful emails per IP address
+- Uses real IP detection (`CF-Connecting-IP` header)
+- Default: **Disabled** (recommended for proxy/backend setups)
+
+### 🔧 Configuration
+
+Rate limiting is configured through environment variables:
+
+```bash
+# Build-time: Enable rate limiting
+RATE_LIMITING=true
+
+# Runtime: Redis connection (required)
+UPSTASH_REDIS_REST_URL=https://your-redis.upstash.io
+UPSTASH_REDIS_REST_TOKEN=your-redis-token
+
+# Global rate limiting (default: enabled, 10/hour)
+RATE_LIMIT_GLOBAL_ENABLED=true
+RATE_LIMIT_GLOBAL_LIMIT=10
+RATE_LIMIT_GLOBAL_WINDOW=3600
+
+# Per-email rate limiting (default: enabled, 1/hour)
+RATE_LIMIT_EMAIL_ENABLED=true
+RATE_LIMIT_EMAIL_LIMIT=1
+RATE_LIMIT_EMAIL_WINDOW=3600
+
+# Per-IP rate limiting (default: disabled)
+RATE_LIMIT_IP_ENABLED=false
+RATE_LIMIT_IP_LIMIT=5
+RATE_LIMIT_IP_WINDOW=3600
+```
+
+### 🏗️ Rate Limiting Flow
+
+```mermaid
+graph TB
+    A[Contact Form Request] --> B{Rate Limiting Enabled?}
+    B -->|No| H[Process Normally]
+    B -->|Yes| C[Extract Identifiers]
+    
+    C --> D[Get Real IP Address]
+    C --> E[Get Email Address]
+    
+    D --> F1{IP Limiting Enabled?}
+    E --> F2{Email Limiting Enabled?}
+    
+    F1 -->|Yes| G1[Check IP Limit in Redis]
+    F1 -->|No| I[Continue to Email Check]
+    F2 -->|Yes| G2[Check Email Limit in Redis]
+    F2 -->|No| I
+    
+    G1 --> H1{IP Limit Exceeded?}
+    G2 --> H2{Email Limit Exceeded?}
+    
+    H1 -->|Yes| J[Return 429 Rate Limited]
+    H2 -->|Yes| J
+    
+    H1 -->|No| K[Check Global Limit]
+    H2 -->|No| K
+    I --> K
+    
+    K --> L{Global Limit Exceeded?}
+    L -->|Yes| J
+    L -->|No| M[Send Email]
+    
+    M --> N{Email Sent Successfully?}
+    N -->|Yes| O[Increment All Counters]
+    N -->|No| P[Return Error - No Increment]
+    
+    O --> Q[Return Success]
+    H --> Q
+    
+    style B fill:#e1f5fe
+    style J fill:#ffebee
+    style M fill:#e8f5e8
+    style O fill:#fff3e0
+    style Q fill:#e0f2f1
+```
+
+### 🛡️ Security Features
+
+- **Fail-Open Design**: If Redis is unavailable, requests are allowed
+- **Real IP Detection**: Uses `CF-Connecting-IP` for accurate IP identification
+- **Successful Email Counting**: Only counts emails that were actually sent
+- **Auto-reply Exclusion**: Auto-reply emails don't count toward limits
+- **Sliding Windows**: Time-based windows for accurate rate limiting
+- **Atomic Operations**: Redis pipelines ensure data consistency
+
+### 📊 Monitoring
+
+Rate limiting events are logged for monitoring:
+
+```json
+{
+  "message": "Contact form blocked due to rate limiting",
+  "email": "user@example.com",
+  "ip": "192.168.1.100",
+  "reason": "Rate limit exceeded for global",
+  "resetTime": 1640995200000,
+  "timestamp": "2025-01-01T12:00:00.000Z"
+}
+```
+
+### 🚀 Getting Started with Rate Limiting
+
+1. **Get Upstash Redis**: Sign up at [console.upstash.com](https://console.upstash.com/)
+2. **Configure Environment**: Set `RATE_LIMITING=true` in build config
+3. **Add Redis Credentials**: Set `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`
+4. **Customize Limits**: Adjust rate limiting settings as needed
+5. **Deploy**: Rate limiting is automatically active
 
 ## 🤝 Contributing
 

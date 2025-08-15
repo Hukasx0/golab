@@ -59,6 +59,38 @@ function parseEnvLimit(
   return parsed;
 }
 
+/**
+ * Parses and validates a boolean environment variable
+ * @param envVar - Environment variable name
+ * @param defaultValue - Default value if env var is not set or invalid
+ * @returns Boolean value or default
+ */
+function parseEnvBoolean(envVar: string, defaultValue: boolean): boolean {
+  const envValue = process.env[envVar];
+  
+  // If not set or empty, use default
+  if (!envValue || envValue.trim() === '') {
+    return defaultValue;
+  }
+  
+  const normalizedValue = envValue.trim().toLowerCase();
+  
+  // Accept common boolean representations
+  if (normalizedValue === 'true' || normalizedValue === '1' || normalizedValue === 'yes') {
+    return true;
+  }
+  
+  if (normalizedValue === 'false' || normalizedValue === '0' || normalizedValue === 'no') {
+    return false;
+  }
+  
+  // Invalid value, warn and use default
+  console.warn(
+    `⚠️  [Gołąb] Invalid ${envVar}="${envValue}". Must be true/false, 1/0, or yes/no. Using default: ${defaultValue}`
+  );
+  return defaultValue;
+}
+
 // Parse environment variables at build time with validation and warnings
 export const SUBJECT_MAX_LENGTH = parseEnvLimit('SUBJECT_MAX_LENGTH', 200, 200, 'above');
 export const MESSAGE_MIN_LENGTH = parseEnvLimit('MESSAGE_MIN_LENGTH', 10, 10, 'below');
@@ -66,6 +98,9 @@ export const MESSAGE_MAX_LENGTH = parseEnvLimit('MESSAGE_MAX_LENGTH', 5000, 5000
 
 // Email limit is always fixed (RFC 5321 standard)
 export const EMAIL_MAX_LENGTH = 320;
+
+// Rate limiting configuration (build-time)
+export const RATE_LIMITING_ENABLED = parseEnvBoolean('RATE_LIMITING', false);
 
 // Export all limits as a const object for convenience
 export const VALIDATION_LIMITS = {
@@ -77,9 +112,10 @@ export const VALIDATION_LIMITS = {
 
 // Log configuration for debugging (only in development)
 if (process.env.NODE_ENV !== 'production') {
-  console.log(`🕊️  [Gołąb] Validation limits configured:
+  console.log(`🕊️  [Gołąb] Build-time configuration:
   - Subject max length: ${SUBJECT_MAX_LENGTH}
   - Message min length: ${MESSAGE_MIN_LENGTH}
   - Message max length: ${MESSAGE_MAX_LENGTH}
-  - Email max length: ${EMAIL_MAX_LENGTH} (fixed)`);
+  - Email max length: ${EMAIL_MAX_LENGTH} (fixed)
+  - Rate limiting enabled: ${RATE_LIMITING_ENABLED}`);
 }

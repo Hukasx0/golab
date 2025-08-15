@@ -7,6 +7,7 @@ import type { ContactFormResponse, ApiError, Environment } from '@/types';
 import { validateContactForm, containsBannedWords, validateApiKey, isEmailAllowed } from '@/utils/validation';
 import { createEmailService } from '@/services/email';
 import { addCorsHeaders } from '@/utils/cors';
+import { createRateLimitService, extractRealIP } from '@/services/rate-limit';
 
 /**
  * Handles contact form submission
@@ -98,6 +99,40 @@ export async function handleContactSubmission(c: Context<{ Bindings: Environment
       return createErrorResponse(errorResponse, 400, c);
     }
 
+    // Check rate limiting if enabled
+    let rateLimitService = null;
+    const isRateLimitingEnabled = process.env['RATE_LIMITING']?.toLowerCase() === 'true';
+    if (isRateLimitingEnabled) {
+      rateLimitService = createRateLimitService(c.env);
+      
+      if (rateLimitService) {
+        const clientIP = extractRealIP(c.req.raw);
+        const rateLimitResult = await rateLimitService.checkRateLimit(clientIP, formData.email);
+        
+        if (!rateLimitResult.allowed) {
+          const errorResponse: ApiError = {
+            error: 'Rate limit exceeded',
+            details: [{
+              field: 'rate_limit',
+              message: rateLimitResult.reason || 'Too many requests. Please try again later.'
+            }],
+            timestamp: new Date().toISOString()
+          };
+          
+          // Log rate limiting for monitoring
+          console.warn('Contact form blocked due to rate limiting', {
+            email: formData.email,
+            ip: clientIP,
+            reason: rateLimitResult.reason,
+            resetTime: rateLimitResult.resetTime,
+            timestamp: new Date().toISOString()
+          });
+          
+          return createErrorResponse(errorResponse, 429, c);
+        }
+      }
+    }
+
     // Create email service and send email
     const emailService = createEmailService(c.env);
     const emailSent = await emailService.sendEmail(formData, c.req.raw);
@@ -109,6 +144,12 @@ export async function handleContactSubmission(c: Context<{ Bindings: Environment
       };
       
       return createErrorResponse(errorResponse, 500, c);
+    }
+
+    // Increment rate limiting counters after successful email send
+    if (isRateLimitingEnabled && rateLimitService) {
+      const clientIP = extractRealIP(c.req.raw);
+      await rateLimitService.incrementCounters(clientIP, formData.email);
     }
 
     // Send auto-reply if enabled

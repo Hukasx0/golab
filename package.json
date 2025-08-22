@@ -6,8 +6,8 @@
   "type": "module",
   "scripts": {
     "dev": "bun run --hot src/index.ts",
-    "build": "bun build src/index.ts --outdir dist --target bun --minify",
-    "build:worker": "bun build src/index.ts --outdir dist --target browser --minify",
+    "build": "bun build src/index.ts --outdir dist --target bun --minify --define BUILD_SUBJECT_MAX_LENGTH=\"$SUBJECT_MAX_LENGTH\" --define BUILD_MESSAGE_MIN_LENGTH=\"$MESSAGE_MIN_LENGTH\" --define BUILD_MESSAGE_MAX_LENGTH=\"$MESSAGE_MAX_LENGTH\" --define BUILD_RATE_LIMITING=\"$RATE_LIMITING\" --define BUILD_RATE_LIMIT_REDIS_FAILURE_MODE=\"$RATE_LIMIT_REDIS_FAILURE_MODE\" --define BUILD_NODE_ENV=\"$NODE_ENV\"",
+    "build:worker": "bun build src/index.ts --outdir dist --target browser --minify --define BUILD_SUBJECT_MAX_LENGTH=\"$SUBJECT_MAX_LENGTH\" --define BUILD_MESSAGE_MIN_LENGTH=\"$MESSAGE_MIN_LENGTH\" --define BUILD_MESSAGE_MAX_LENGTH=\"$MESSAGE_MAX_LENGTH\" --define BUILD_RATE_LIMITING=\"$RATE_LIMITING\" --define BUILD_RATE_LIMIT_REDIS_FAILURE_MODE=\"$RATE_LIMIT_REDIS_FAILURE_MODE\" --define BUILD_NODE_ENV=\"$NODE_ENV\"",
     "test": "bun test",
     "test:watch": "bun test --watch",
     "test:coverage": "bun test --coverage",

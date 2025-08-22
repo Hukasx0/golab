@@ -1,14 +1,46 @@
 /**
  * Build-time environment variable configuration for Gołąb contact form API
- * 
+ *
  * IMPORTANT: This module is evaluated at BUILD TIME for optimal performance.
  * All environment variables are parsed once during module initialization.
  * Changes to environment variables require a rebuild/restart to take effect.
- * 
+ *
  * This design ensures zero runtime overhead for environment variable parsing
  * during validation, which is critical for high-performance edge computing
  * environments like Cloudflare Workers.
  */
+
+// Build-time environment variable declarations (injected by Bun --define)
+declare const BUILD_SUBJECT_MAX_LENGTH: string | undefined;
+declare const BUILD_MESSAGE_MIN_LENGTH: string | undefined;
+declare const BUILD_MESSAGE_MAX_LENGTH: string | undefined;
+declare const BUILD_RATE_LIMITING: string | undefined;
+declare const BUILD_RATE_LIMIT_REDIS_FAILURE_MODE: string | undefined;
+declare const BUILD_NODE_ENV: string | undefined;
+
+/**
+ * Gets build-time environment variable value
+ * @param envVar - Environment variable name
+ * @returns Environment variable value or undefined
+ */
+function getBuildTimeEnv(envVar: string): string | undefined {
+  switch (envVar) {
+    case 'SUBJECT_MAX_LENGTH':
+      return typeof BUILD_SUBJECT_MAX_LENGTH !== 'undefined' ? BUILD_SUBJECT_MAX_LENGTH : undefined;
+    case 'MESSAGE_MIN_LENGTH':
+      return typeof BUILD_MESSAGE_MIN_LENGTH !== 'undefined' ? BUILD_MESSAGE_MIN_LENGTH : undefined;
+    case 'MESSAGE_MAX_LENGTH':
+      return typeof BUILD_MESSAGE_MAX_LENGTH !== 'undefined' ? BUILD_MESSAGE_MAX_LENGTH : undefined;
+    case 'RATE_LIMITING':
+      return typeof BUILD_RATE_LIMITING !== 'undefined' ? BUILD_RATE_LIMITING : undefined;
+    case 'RATE_LIMIT_REDIS_FAILURE_MODE':
+      return typeof BUILD_RATE_LIMIT_REDIS_FAILURE_MODE !== 'undefined' ? BUILD_RATE_LIMIT_REDIS_FAILURE_MODE : undefined;
+    case 'NODE_ENV':
+      return typeof BUILD_NODE_ENV !== 'undefined' ? BUILD_NODE_ENV : undefined;
+    default:
+      return undefined;
+  }
+}
 
 /**
  * Parses and validates an environment variable as a positive integer
@@ -19,12 +51,12 @@
  * @returns Parsed integer value or default
  */
 function parseEnvLimit(
-  envVar: string, 
-  defaultValue: number, 
-  warningThreshold?: number, 
+  envVar: string,
+  defaultValue: number,
+  warningThreshold?: number,
   warningType?: 'above' | 'below'
 ): number {
-  const envValue = process.env[envVar];
+  const envValue = getBuildTimeEnv(envVar);
   
   // If not set or empty, use default
   if (!envValue || envValue.trim() === '') {
@@ -66,7 +98,7 @@ function parseEnvLimit(
  * @returns Boolean value or default
  */
 function parseEnvBoolean(envVar: string, defaultValue: boolean): boolean {
-  const envValue = process.env[envVar];
+  const envValue = getBuildTimeEnv(envVar);
   
   // If not set or empty, use default
   if (!envValue || envValue.trim() === '') {
@@ -104,7 +136,7 @@ export const RATE_LIMITING_ENABLED = parseEnvBoolean('RATE_LIMITING', false);
 
 // Redis failure mode configuration (build-time)
 export const RATE_LIMIT_REDIS_FAILURE_MODE = (() => {
-  const envValue = process.env['RATE_LIMIT_REDIS_FAILURE_MODE'];
+  const envValue = getBuildTimeEnv('RATE_LIMIT_REDIS_FAILURE_MODE');
   
   // If not set or empty, use default
   if (!envValue || envValue.trim() === '') {
@@ -134,7 +166,7 @@ export const VALIDATION_LIMITS = {
 } as const;
 
 // Log configuration for debugging (only in development)
-if (process.env.NODE_ENV !== 'production') {
+if (getBuildTimeEnv('NODE_ENV') !== 'production') {
   console.log(`🕊️  [Gołąb] Build-time configuration:
   - Subject max length: ${SUBJECT_MAX_LENGTH}
   - Message min length: ${MESSAGE_MIN_LENGTH}

@@ -8,6 +8,7 @@ import { validateContactForm, containsBannedWords, validateApiKey, isEmailAllowe
 import { createEmailService } from '@/services/email';
 import { addCorsHeaders } from '@/utils/cors';
 import { createRateLimitService, extractRealIP } from '@/services/rate-limit';
+import { RATE_LIMITING_ENABLED } from '@/utils/env-config';
 
 /**
  * Handles contact form submission
@@ -101,8 +102,7 @@ export async function handleContactSubmission(c: Context<{ Bindings: Environment
 
     // Check rate limiting if enabled
     let rateLimitService = null;
-    const isRateLimitingEnabled = process.env['RATE_LIMITING']?.toLowerCase() === 'true';
-    if (isRateLimitingEnabled) {
+    if (RATE_LIMITING_ENABLED) {
       rateLimitService = createRateLimitService(c.env);
       
       if (rateLimitService) {
@@ -147,7 +147,7 @@ export async function handleContactSubmission(c: Context<{ Bindings: Environment
     }
 
     // Increment rate limiting counters after successful email send
-    if (isRateLimitingEnabled && rateLimitService) {
+    if (RATE_LIMITING_ENABLED && rateLimitService) {
       const clientIP = extractRealIP(c.req.raw);
       await rateLimitService.incrementCounters(clientIP, formData.email);
     }

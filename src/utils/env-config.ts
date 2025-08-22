@@ -1,14 +1,15 @@
 /**
- * Build-time environment variable configuration for Gołąb contact form API
+ * Environment variable configuration for Gołąb contact form API
  *
- * IMPORTANT: This module is evaluated at BUILD TIME for optimal performance.
- * All environment variables are parsed once during module initialization.
- * Changes to environment variables require a rebuild/restart to take effect.
+ * HYBRID APPROACH: This module supports both build-time and runtime environment variables.
+ * - Build-time variables are used for optimal performance in local development
+ * - Runtime variables are used as fallback for Cloudflare Workers deployment
  *
- * This design ensures zero runtime overhead for environment variable parsing
- * during validation, which is critical for high-performance edge computing
- * environments like Cloudflare Workers.
+ * For validation limits: Build-time parsing is preferred for zero runtime overhead
+ * For rate limiting: Runtime detection is used to support Cloudflare Workers
  */
+
+import type { Environment } from '@/types';
 
 // Build-time environment variable declarations (injected by Bun --define)
 declare const BUILD_SUBJECT_MAX_LENGTH: string | undefined;
@@ -165,6 +166,44 @@ export const VALIDATION_LIMITS = {
   EMAIL_MAX_LENGTH
 } as const;
 
+/**
+ * RUNTIME ENVIRONMENT VARIABLE DETECTION
+ */
+
+/**
+ * Determines if rate limiting should be enabled
+ * Checks build-time constant first, then falls back to runtime env var
+ * @param env - Runtime environment variables
+ * @returns true if rate limiting should be enabled
+ */
+export function isRateLimitingEnabled(env: Environment): boolean {
+  // 1. Check build-time constant (local development)
+  if (typeof BUILD_RATE_LIMITING !== 'undefined') {
+    return BUILD_RATE_LIMITING === 'true';
+  }
+  
+  // 2. Fallback to runtime environment variable
+  return env['RATE_LIMITING']?.toLowerCase() === 'true';
+}
+
+/**
+ * Determines the Redis failure mode for rate limiting
+ * Checks build-time constant first, then falls back to runtime env var
+ * @param env - Runtime environment variables
+ * @returns 'open' or 'closed' failure mode
+ */
+export function getRateLimitFailureMode(env: Environment): 'open' | 'closed' {
+  // 1. Check build-time constant (local development)
+  if (typeof BUILD_RATE_LIMIT_REDIS_FAILURE_MODE !== 'undefined') {
+    const mode = BUILD_RATE_LIMIT_REDIS_FAILURE_MODE.toLowerCase();
+    return mode === 'closed' ? 'closed' : 'open';
+  }
+  
+  // 2. Fallback to runtime environment variable (Cloudflare Workers)
+  const runtimeMode = env['RATE_LIMIT_REDIS_FAILURE_MODE']?.toLowerCase();
+  return runtimeMode === 'closed' ? 'closed' : 'open';
+}
+
 // Log configuration for debugging (only in development)
 if (getBuildTimeEnv('NODE_ENV') !== 'production') {
   console.log(`🕊️  [Gołąb] Build-time configuration:
@@ -172,5 +211,6 @@ if (getBuildTimeEnv('NODE_ENV') !== 'production') {
   - Message min length: ${MESSAGE_MIN_LENGTH}
   - Message max length: ${MESSAGE_MAX_LENGTH}
   - Email max length: ${EMAIL_MAX_LENGTH} (fixed)
-  - Rate limiting enabled: ${RATE_LIMITING_ENABLED}`);
+  - Rate limiting enabled (build-time): ${RATE_LIMITING_ENABLED}
+  - Rate limiting failure mode (build-time): ${RATE_LIMIT_REDIS_FAILURE_MODE}`);
 }

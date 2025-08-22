@@ -288,7 +288,7 @@ Complete reference for all configuration options:
 | `SUBJECT_MAX_LENGTH` | Optional override for subject max length (>=1). Default: 200 | ❌ | `150` |
 | `MESSAGE_MIN_LENGTH` | Optional override for message min length (>=1). Default: 10 | ❌ | `5` |
 | `MESSAGE_MAX_LENGTH` | Optional override for message max length (>=1). Default: 5000 | ❌ | `2000` |
-| `RATE_LIMITING` | Enable rate limiting (build-time). Default: false | ❌ | `true` |
+| `RATE_LIMITING` | Enable rate limiting. Default: false | ❌ | `true` |
 | `UPSTASH_REDIS_REST_URL` | Upstash Redis REST URL (required when rate limiting enabled) | ❌ | `https://your-redis.upstash.io` |
 | `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis REST token (required when rate limiting enabled) | ❌ | `your-redis-token` |
 | `RATE_LIMIT_GLOBAL_ENABLED` | Enable global rate limiting. Default: true | ❌ | `true` |
@@ -572,7 +572,7 @@ Gołąb includes advanced rate limiting powered by Upstash Redis to protect agai
 Rate limiting is configured through environment variables:
 
 ```bash
-# Build-time: Enable rate limiting
+# Runtime: Enable rate limiting
 RATE_LIMITING=true
 
 # Runtime: Redis connection (required)
@@ -595,7 +595,7 @@ RATE_LIMIT_IP_LIMIT=5
 RATE_LIMIT_IP_WINDOW=3600
 
 # Redis failure handling (default: "open")
-RATE_LIMIT_REDIS_FAILURE_MODE=open
+RATE_LIMIT_REDIS_FAILURE_MODE=closed
 ```
 
 ### 🏗️ Rate Limiting Flow
@@ -672,11 +672,11 @@ Rate limiting events are logged for monitoring:
 ### 🚀 Getting Started with Rate Limiting
 
 1. **Get Upstash Redis**: Sign up at [console.upstash.com](https://console.upstash.com/)
-2. **Configure Environment**: Set `RATE_LIMITING=true` in build config
+2. **Configure Environment**: Set `RATE_LIMITING=true` via Cloudflare Dashboard or wrangler.toml
 3. **Add Redis Credentials**: Set `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`
-4. **Configure Failure Mode**: Set `RATE_LIMIT_REDIS_FAILURE_MODE` to `"open"` or `"closed"`
+4. **Configure Failure Mode**: Set `RATE_LIMIT_REDIS_FAILURE_MODE` to `"closed"` for maximum security
 5. **Customize Limits**: Adjust rate limiting settings as needed
-6. **Deploy**: Rate limiting is automatically active
+6. **Deploy**
 
 ### 🔧 Redis Failure Modes
 

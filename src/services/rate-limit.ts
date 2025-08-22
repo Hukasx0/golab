@@ -3,9 +3,9 @@
  * Integrates with Upstash Redis to provide flexible rate limiting
  */
 
-import { Redis } from '@upstash/redis';
+import { Redis } from '@upstash/redis/cloudflare';
 import type { Environment, RateLimitConfig, RateLimitResult, RateLimitService } from '@/types';
-import { RATE_LIMIT_REDIS_FAILURE_MODE } from '@/utils/env-config';
+import { getRateLimitFailureMode } from '@/utils/env-config';
 
 /**
  * Rate limiting service implementation using Upstash Redis
@@ -203,23 +203,23 @@ export class UpstashRateLimitService implements RateLimitService {
 export function parseRateLimitConfig(env: Environment): RateLimitConfig {
   return {
     global: {
-      enabled: env.RATE_LIMIT_GLOBAL_ENABLED?.toLowerCase() === 'true' ||
-               (env.RATE_LIMIT_GLOBAL_ENABLED === undefined && true), // Default: enabled
-      limit: parseInt(env.RATE_LIMIT_GLOBAL_LIMIT || '10', 10),
-      window: parseInt(env.RATE_LIMIT_GLOBAL_WINDOW || '3600', 10) // Default: 1 hour
+      enabled: env['RATE_LIMIT_GLOBAL_ENABLED']?.toLowerCase() === 'true' ||
+               (env['RATE_LIMIT_GLOBAL_ENABLED'] === undefined && true), // Default: enabled
+      limit: parseInt(env['RATE_LIMIT_GLOBAL_LIMIT'] || '10', 10),
+      window: parseInt(env['RATE_LIMIT_GLOBAL_WINDOW'] || '3600', 10) // Default: 1 hour
     },
     ip: {
-      enabled: env.RATE_LIMIT_IP_ENABLED?.toLowerCase() === 'true', // Default: disabled
-      limit: parseInt(env.RATE_LIMIT_IP_LIMIT || '5', 10),
-      window: parseInt(env.RATE_LIMIT_IP_WINDOW || '3600', 10) // Default: 1 hour
+      enabled: env['RATE_LIMIT_IP_ENABLED']?.toLowerCase() === 'true', // Default: disabled
+      limit: parseInt(env['RATE_LIMIT_IP_LIMIT'] || '5', 10),
+      window: parseInt(env['RATE_LIMIT_IP_WINDOW'] || '3600', 10) // Default: 1 hour
     },
     email: {
-      enabled: env.RATE_LIMIT_EMAIL_ENABLED?.toLowerCase() === 'true' ||
-               (env.RATE_LIMIT_EMAIL_ENABLED === undefined && true), // Default: enabled
-      limit: parseInt(env.RATE_LIMIT_EMAIL_LIMIT || '1', 10),
-      window: parseInt(env.RATE_LIMIT_EMAIL_WINDOW || '3600', 10) // Default: 1 hour
+      enabled: env['RATE_LIMIT_EMAIL_ENABLED']?.toLowerCase() === 'true' ||
+               (env['RATE_LIMIT_EMAIL_ENABLED'] === undefined && true), // Default: enabled
+      limit: parseInt(env['RATE_LIMIT_EMAIL_LIMIT'] || '1', 10),
+      window: parseInt(env['RATE_LIMIT_EMAIL_WINDOW'] || '3600', 10) // Default: 1 hour
     },
-    redisFailureMode: RATE_LIMIT_REDIS_FAILURE_MODE
+    redisFailureMode: getRateLimitFailureMode(env)
   };
 }
 
@@ -230,7 +230,7 @@ export function parseRateLimitConfig(env: Environment): RateLimitConfig {
  */
 export function createRateLimitService(env: Environment): RateLimitService | null {
   // Check if Redis is configured
-  if (!env.UPSTASH_REDIS_REST_URL || !env.UPSTASH_REDIS_REST_TOKEN) {
+  if (!env['UPSTASH_REDIS_REST_URL'] || !env['UPSTASH_REDIS_REST_TOKEN']) {
     console.warn('⚠️  [Gołąb] Rate limiting enabled but Upstash Redis not configured. Rate limiting will be disabled.');
     return null;
   }
@@ -245,8 +245,8 @@ export function createRateLimitService(env: Environment): RateLimitService | nul
 
   try {
     return new UpstashRateLimitService(
-      env.UPSTASH_REDIS_REST_URL,
-      env.UPSTASH_REDIS_REST_TOKEN,
+      env['UPSTASH_REDIS_REST_URL'],
+      env['UPSTASH_REDIS_REST_TOKEN'],
       config
     );
   } catch (error) {

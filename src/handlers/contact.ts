@@ -8,7 +8,7 @@ import { validateContactForm, containsBannedWords, validateApiKey, isEmailAllowe
 import { createEmailService } from '@/services/email';
 import { addCorsHeaders } from '@/utils/cors';
 import { createRateLimitService, extractRealIP } from '@/services/rate-limit';
-import { RATE_LIMITING_ENABLED } from '@/utils/env-config';
+import { isRateLimitingEnabled, getRateLimitFailureMode } from '@/utils/env-config';
 
 /**
  * Handles contact form submission
@@ -102,10 +102,11 @@ export async function handleContactSubmission(c: Context<{ Bindings: Environment
 
     // Check rate limiting if enabled
     let rateLimitService = null;
-    if (RATE_LIMITING_ENABLED) {
+    if (isRateLimitingEnabled(c.env)) {
       rateLimitService = createRateLimitService(c.env);
       
       if (rateLimitService) {
+        // Redis is available - check rate limits normally
         const clientIP = extractRealIP(c.req.raw);
         const rateLimitResult = await rateLimitService.checkRateLimit(clientIP, formData.email);
         
@@ -130,6 +131,41 @@ export async function handleContactSubmission(c: Context<{ Bindings: Environment
           
           return createErrorResponse(errorResponse, 429, c);
         }
+      } else {
+        // Rate limiting is enabled but Redis is not available
+        // Check failure mode to decide whether to block the ENTIRE ENDPOINT or allow
+        const failureMode = getRateLimitFailureMode(c.env);
+        
+        if (failureMode === 'closed') {
+          // FAIL-CLOSED: Block the entire endpoint when Redis is unavailable
+          const errorResponse: ApiError = {
+            error: 'Service temporarily unavailable',
+            details: [{
+              field: 'service',
+              message: 'Contact form service is temporarily unavailable. Please try again later.'
+            }],
+            timestamp: new Date().toISOString()
+          };
+          
+          // Log service unavailability for monitoring
+          console.error('Contact form endpoint blocked due to Redis unavailability (fail-closed mode)', {
+            email: formData.email,
+            ip: extractRealIP(c.req.raw),
+            reason: 'Redis unavailable - rate limiting service cannot be initialized',
+            failureMode: 'closed',
+            timestamp: new Date().toISOString()
+          });
+          
+          return createErrorResponse(errorResponse, 503, c); // 503 Service Unavailable
+        }
+        
+        // FAIL-OPEN: Allow requests to continue without rate limiting when Redis is unavailable
+        console.warn('Rate limiting service unavailable, allowing request (fail-open mode)', {
+          email: formData.email,
+          ip: extractRealIP(c.req.raw),
+          failureMode: 'open',
+          timestamp: new Date().toISOString()
+        });
       }
     }
 
@@ -147,7 +183,7 @@ export async function handleContactSubmission(c: Context<{ Bindings: Environment
     }
 
     // Increment rate limiting counters after successful email send
-    if (RATE_LIMITING_ENABLED && rateLimitService) {
+    if (isRateLimitingEnabled(c.env) && rateLimitService) {
       const clientIP = extractRealIP(c.req.raw);
       await rateLimitService.incrementCounters(clientIP, formData.email);
     }

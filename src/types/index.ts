@@ -79,10 +79,69 @@ export interface Environment extends Record<string, string> {
   EMAIL_DOMAIN_WHITELIST?: string;
   EMAIL_DOMAIN_BLACKLIST?: string;
   EMAIL_ADDRESS_BLACKLIST?: string;
+  
+  // Rate limiting configuration (runtime)
+  UPSTASH_REDIS_REST_URL?: string;
+  UPSTASH_REDIS_REST_TOKEN?: string;
+  
+  // Global rate limiting
+  RATE_LIMIT_GLOBAL_ENABLED?: string;
+  RATE_LIMIT_GLOBAL_LIMIT?: string;
+  RATE_LIMIT_GLOBAL_WINDOW?: string;
+  
+  // Per-IP rate limiting
+  RATE_LIMIT_IP_ENABLED?: string;
+  RATE_LIMIT_IP_LIMIT?: string;
+  RATE_LIMIT_IP_WINDOW?: string;
+  
+  // Per-email rate limiting
+  RATE_LIMIT_EMAIL_ENABLED?: string;
+  RATE_LIMIT_EMAIL_LIMIT?: string;
+  RATE_LIMIT_EMAIL_WINDOW?: string;
 }
 
 export interface RequestContext {
   request: Request;
   env: Environment;
   ctx: ExecutionContext;
+}
+
+/**
+ * Rate limiting configuration
+ */
+export interface RateLimitConfig {
+  global: {
+    enabled: boolean;
+    limit: number;
+    window: number; // seconds
+  };
+  ip: {
+    enabled: boolean;
+    limit: number;
+    window: number; // seconds
+  };
+  email: {
+    enabled: boolean;
+    limit: number;
+    window: number; // seconds
+  };
+  redisFailureMode: 'open' | 'closed';
+}
+
+/**
+ * Rate limiting check result
+ */
+export interface RateLimitResult {
+  allowed: boolean;
+  reason?: string;
+  resetTime?: number; // Unix timestamp
+  remaining?: number;
+}
+
+/**
+ * Rate limiting service interface
+ */
+export interface RateLimitService {
+  checkRateLimit(ip: string, email: string): Promise<RateLimitResult>;
+  incrementCounters(ip: string, email: string): Promise<void>;
 }

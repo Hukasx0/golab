@@ -6,8 +6,8 @@
   "type": "module",
   "scripts": {
     "dev": "bun run --hot src/index.ts",
-    "build": "bun build src/index.ts --outdir dist --target bun --minify",
-    "build:worker": "bun build src/index.ts --outdir dist --target browser --minify",
+    "build": "bun build src/index.ts --outdir dist --target bun --minify --define BUILD_SUBJECT_MAX_LENGTH=\"$SUBJECT_MAX_LENGTH\" --define BUILD_MESSAGE_MIN_LENGTH=\"$MESSAGE_MIN_LENGTH\" --define BUILD_MESSAGE_MAX_LENGTH=\"$MESSAGE_MAX_LENGTH\" --define BUILD_NODE_ENV=\"$NODE_ENV\"",
+    "build:worker": "bun build src/index.ts --outdir dist --target browser --minify --define BUILD_SUBJECT_MAX_LENGTH=\"$SUBJECT_MAX_LENGTH\" --define BUILD_MESSAGE_MIN_LENGTH=\"$MESSAGE_MIN_LENGTH\" --define BUILD_MESSAGE_MAX_LENGTH=\"$MESSAGE_MAX_LENGTH\" --define BUILD_NODE_ENV=\"$NODE_ENV\" --define process=\"{}\"",
     "test": "bun test",
     "test:watch": "bun test --watch",
     "test:coverage": "bun test --coverage",
@@ -30,7 +30,8 @@
   "dependencies": {
     "hono": "^3.12.8",
     "resend": "^2.1.0",
-    "zod": "^3.22.4"
+    "zod": "^3.22.4",
+    "@upstash/redis": "^1.28.4"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20231218.0",

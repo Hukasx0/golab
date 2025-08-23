@@ -11,7 +11,7 @@ describe('CORS Headers Creation', () => {
     
     expect(headers['Access-Control-Allow-Origin']).toBe('*');
     expect(headers['Access-Control-Allow-Methods']).toBe('POST, OPTIONS');
-    expect(headers['Access-Control-Allow-Headers']).toBe('Content-Type, Authorization');
+    expect(headers['Access-Control-Allow-Headers']).toBe('Content-Type, X-API-Key');
     expect(headers['Access-Control-Max-Age']).toBe('86400');
   });
 

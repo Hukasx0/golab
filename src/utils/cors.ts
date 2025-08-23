@@ -8,7 +8,7 @@
 export const corsHeaders = {
   'Access-Control-Allow-Origin': '*', // Will be overridden by environment variable
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Allow-Headers': 'Content-Type, X-API-Key',
   'Access-Control-Max-Age': '86400', // 24 hours
 };
 

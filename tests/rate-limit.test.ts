@@ -17,7 +17,7 @@ const mockRedisPipeline = mock(() => ({
 }));
 
 // Mock Upstash Redis
-mock.module('@upstash/redis', () => ({
+mock.module('@upstash/redis/cloudflare', () => ({
   Redis: mock().mockImplementation(() => ({
     get: mockRedisGet,
     incr: mockRedisIncr,

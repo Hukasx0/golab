@@ -4,7 +4,7 @@
 
 import { expect, test, describe, mock, beforeEach } from 'bun:test';
 import { ResendEmailService } from '@/services/email';
-import type { ContactFormData } from '@/types';
+import type { ContactFormData, Environment } from '@/types';
 import { generateEmailTemplate } from '../templates/email-template';
 import { generateAutoReplyTemplate } from '../templates/auto-reply-template';
 
@@ -26,9 +26,15 @@ describe('ResendEmailService', () => {
   const testTargetEmail = 'target@example.com';
   const testFromEmail = 'Test Form <noreply@test.com>';
 
+  const mockEnv: Environment = {
+    RESEND_API_KEY: testApiKey,
+    TARGET_EMAIL: testTargetEmail,
+    FROM_EMAIL: testFromEmail
+  };
+
   beforeEach(() => {
     mockSend.mockClear();
-    emailService = new ResendEmailService(testApiKey, testTargetEmail, testFromEmail);
+    emailService = new ResendEmailService(testApiKey, testTargetEmail, testFromEmail, mockEnv);
   });
 
   test('should send email successfully', async () => {
@@ -250,7 +256,7 @@ describe('ResendEmailService', () => {
 
     beforeEach(() => {
       mockSend.mockClear();
-      emailServiceWithAutoReply = new ResendEmailService(testApiKey, testTargetEmail, testFromEmail, testAutoReplyFromEmail);
+      emailServiceWithAutoReply = new ResendEmailService(testApiKey, testTargetEmail, testFromEmail, mockEnv, testAutoReplyFromEmail);
     });
 
     test('should use AUTO_REPLY_FROM_EMAIL when provided', async () => {
@@ -273,7 +279,7 @@ describe('ResendEmailService', () => {
     });
 
     test('should fallback to FROM_EMAIL when AUTO_REPLY_FROM_EMAIL is undefined', async () => {
-      const emailServiceWithoutAutoReply = new ResendEmailService(testApiKey, testTargetEmail, testFromEmail, undefined);
+      const emailServiceWithoutAutoReply = new ResendEmailService(testApiKey, testTargetEmail, testFromEmail, mockEnv, undefined);
       
       const contactData: ContactFormData = {
         email: 'sender@example.com',
@@ -292,7 +298,7 @@ describe('ResendEmailService', () => {
     });
 
     test('should fallback to FROM_EMAIL when AUTO_REPLY_FROM_EMAIL is empty string', async () => {
-      const emailServiceWithEmptyAutoReply = new ResendEmailService(testApiKey, testTargetEmail, testFromEmail, '');
+      const emailServiceWithEmptyAutoReply = new ResendEmailService(testApiKey, testTargetEmail, testFromEmail, mockEnv, '');
       
       const contactData: ContactFormData = {
         email: 'sender@example.com',

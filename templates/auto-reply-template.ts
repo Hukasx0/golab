@@ -8,11 +8,6 @@
 import type { AutoReplyTemplateData } from '../src/types';
 
 /**
- * Auto-reply email subject line
- */
-export const AUTO_REPLY_SUBJECT = `Thank you for your message - We'll get back to you soon`;
-
-/**
  * Generates HTML and text auto-reply email content
  * @param data - Template data with type safety
  * @returns Object containing HTML and text versions of the auto-reply email

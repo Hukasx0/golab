@@ -7,7 +7,7 @@ import { Resend } from 'resend';
 import type { ContactFormData, EmailService, Environment, EmailTemplateData, AutoReplyTemplateData } from '@/types';
 import { sanitizeText } from '@/utils/validation';
 import { generateEmailTemplate } from '../../templates/email-template';
-import { generateAutoReplyTemplate, AUTO_REPLY_SUBJECT } from '../../templates/auto-reply-template';
+import { generateAutoReplyTemplate } from '../../templates/auto-reply-template';
 
 /**
  * Email service implementation using Resend
@@ -17,12 +17,14 @@ export class ResendEmailService implements EmailService {
   private targetEmail: string;
   private fromEmail: string;
   private autoReplyFromEmail: string;
+  private env: Environment;
 
-  constructor(apiKey: string, targetEmail: string, fromEmail: string, autoReplyFromEmail?: string) {
+  constructor(apiKey: string, targetEmail: string, fromEmail: string, env: Environment, autoReplyFromEmail?: string) {
     this.resend = new Resend(apiKey);
     this.targetEmail = targetEmail;
     this.fromEmail = fromEmail;
     this.autoReplyFromEmail = autoReplyFromEmail || fromEmail;
+    this.env = env;
   }
 
   /**
@@ -58,12 +60,13 @@ export class ResendEmailService implements EmailService {
    */
   async sendAutoReply(data: ContactFormData): Promise<boolean> {
     try {
+      const autoReplySubject = this.env['AUTO_REPLY_SUBJECT'] || "Thank you for your message - We'll get back to you soon";
       const autoReplyContent = this.generateAutoReplyContent(data);
       
       const result = await this.resend.emails.send({
         from: this.autoReplyFromEmail,
         to: [data.email],
-        subject: AUTO_REPLY_SUBJECT,
+        subject: autoReplySubject,
         html: autoReplyContent.html,
         text: autoReplyContent.text,
       });
@@ -149,5 +152,5 @@ export class ResendEmailService implements EmailService {
  * @returns Email service instance
  */
 export function createEmailService(env: Environment): EmailService {
-  return new ResendEmailService(env.RESEND_API_KEY, env.TARGET_EMAIL, env.FROM_EMAIL, env.AUTO_REPLY_FROM_EMAIL);
+  return new ResendEmailService(env.RESEND_API_KEY, env.TARGET_EMAIL, env.FROM_EMAIL, env, env.AUTO_REPLY_FROM_EMAIL);
 }

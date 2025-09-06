@@ -281,6 +281,7 @@ Complete reference for all configuration options:
 | `API_KEY` | Secure API key for authentication | ❌ | `$(openssl rand -base64 32)` |
 | `ENABLE_AUTO_REPLY` | Send thank you emails to senders | ❌ | `true` |
 | `AUTO_REPLY_FROM_EMAIL` | From address for auto-reply emails (defaults to FROM_EMAIL) | ❌ | `"Auto Reply <autoreply@yourdomain.com>"` |
+| `AUTO_REPLY_SUBJECT` | Subject line for auto-reply emails (defaults to built-in message) | ❌ | `"Thanks for contacting us!"` |
 | `BANNED_WORDS` | Content filter (semicolon-separated) | ❌ | `spam;casino;lottery` |
 | `EMAIL_DOMAIN_WHITELIST` | Allowed email domains only | ❌ | `yourdomain.com;trusted.org` |
 | `EMAIL_DOMAIN_BLACKLIST` | Blocked email domains | ❌ | `spam.com;malicious.net` |

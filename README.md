@@ -698,6 +698,15 @@ Rate limiting events are logged for monitoring:
 4. Push to the branch (`git push origin feat/amazing-feature`)
 5. Open a Pull Request
 
+## 📚 Documentation
+
+- [Cloudflare Workers](https://developers.cloudflare.com/workers/)
+- [Resend](https://resend.com/docs/introduction)
+- [Upstash Redis](https://upstash.com/docs/redis/overall/getstarted)
+- [Bun](https://bun.com/docs)
+- [Hono](https://hono.dev/docs/)
+- [Zod](https://zod.dev/)
+
 ## 📄 License
 
 This project is licensed under the **AGPL-3.0 License** - see the [LICENSE](LICENSE) file for details.

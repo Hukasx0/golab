@@ -182,6 +182,31 @@ describe('ResendEmailService', () => {
     expect(callArgs.text).toContain('Thank you for your message!');
   });
 
+  test('should forward attachment when provided', async () => {
+    const contactData: ContactFormData = {
+      email: 'sender@example.com',
+      subject: 'With Attachment',
+      message: 'This is a test message with attachment.'
+    };
+
+    const attachment = {
+      filename: 'data.json',
+      contentType: 'application/json',
+      content: 'e30=' // "{}"
+    };
+
+    const result = await emailService.sendEmail(contactData, undefined as any, attachment);
+    expect(result).toBe(true);
+    expect(mockSend).toHaveBeenCalledTimes(1);
+
+    const callArgs = (mockSend.mock.calls as any)[0][0];
+    expect(callArgs.attachments).toBeDefined();
+    expect(Array.isArray(callArgs.attachments)).toBe(true);
+    expect(callArgs.attachments.length).toBe(1);
+    expect(callArgs.attachments[0].filename).toBe('data.json');
+    expect(callArgs.attachments[0].content).toBe('e30=');
+  });
+
   test('should handle auto-reply email sending failure', async () => {
     // Mock a failed email send
     mockSend.mockImplementationOnce(() => Promise.resolve({ data: { id: '' } }));

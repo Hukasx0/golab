@@ -4,10 +4,13 @@
  */
 
 import { Resend } from 'resend';
-import type { ContactFormData, EmailService, Environment, EmailTemplateData, AutoReplyTemplateData } from '@/types';
+import type { ContactFormData, EmailService, Environment, EmailTemplateData, AutoReplyTemplateData, AttachmentPayload } from '@/types';
 import { sanitizeText } from '@/utils/validation';
 import { generateEmailTemplate } from '../../templates/email-template';
 import { generateAutoReplyTemplate } from '../../templates/auto-reply-template';
+
+// Derive the correct send options type from the Resend SDK without importing internal types
+type EmailSendOptions = Parameters<InstanceType<typeof Resend>['emails']['send']>[0];
 
 /**
  * Email service implementation using Resend
@@ -33,18 +36,22 @@ export class ResendEmailService implements EmailService {
    * @param request - Request object for extracting origin and IP info
    * @returns Promise<boolean> - Success status
    */
-  async sendEmail(data: ContactFormData, request?: Request): Promise<boolean> {
+  async sendEmail(data: ContactFormData, request?: Request, attachment?: AttachmentPayload): Promise<boolean> {
     try {
       const emailContent = await this.generateEmailContent(data, request);
       
-      const result = await this.resend.emails.send({
+      const options: EmailSendOptions = {
         from: this.fromEmail,
         to: [this.targetEmail],
         subject: `${data.subject}`,
         html: emailContent.html,
         text: emailContent.text,
         reply_to: data.email, // Allow direct reply to the sender
-      });
+        // Include a single optional attachment (Base64) when provided
+        ...(attachment ? { attachments: [{ content: attachment.content, filename: attachment.filename }] } : {})
+      };
+
+      const result = await this.resend.emails.send(options);
 
       return !!result.data?.id;
     } catch (error) {
@@ -63,13 +70,15 @@ export class ResendEmailService implements EmailService {
       const autoReplySubject = this.env['AUTO_REPLY_SUBJECT'] || "Thank you for your message - We'll get back to you soon";
       const autoReplyContent = this.generateAutoReplyContent(data);
       
-      const result = await this.resend.emails.send({
+      const options: EmailSendOptions = {
         from: this.autoReplyFromEmail,
         to: [data.email],
         subject: autoReplySubject,
         html: autoReplyContent.html,
-        text: autoReplyContent.text,
-      });
+        text: autoReplyContent.text
+      };
+
+      const result = await this.resend.emails.send(options);
 
       return !!result.data?.id;
     } catch (error) {

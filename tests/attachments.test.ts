@@ -29,7 +29,11 @@ describe('Attachments Feature', () => {
   // Mock email service factory to capture attachment argument
   const mockEmailService = {
     sendEmail: (data: any, request?: Request, attachment?: any) => {
-      captured = { data, request, attachment };
+      captured = {
+        data,
+        ...(request !== undefined ? { request } : {}),
+        ...(attachment !== undefined ? { attachment } : {}),
+      };
       return mockSendEmail();
     },
     sendAutoReply: mock(() => Promise.resolve(true))

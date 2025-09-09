@@ -11,6 +11,11 @@ export interface ContactFormData {
   email: string;
   subject: string;
   message: string;
+  /**
+   * Optional single attachment; only honored when ATTACHMENTS_ENABLED=true.
+   * When disabled, presence of this field will cause a 400 error.
+   */
+  attachment?: AttachmentPayload;
 }
 
 export interface ContactFormResponse {
@@ -45,6 +50,15 @@ export interface AutoReplyTemplateData {
 }
 
 /**
+ * Single file attachment payload (Base64 content only; remote URLs are not supported)
+ */
+export interface AttachmentPayload {
+  filename: string;     // e.g., "document.json"
+  contentType: string;  // MIME type, e.g., "application/json"
+  content: string;      // Base64-encoded file content (no data: URI prefix)
+}
+
+/**
  * Template function type for generating email content
  */
 export interface TemplateFunction<T> {
@@ -52,7 +66,7 @@ export interface TemplateFunction<T> {
 }
 
 export interface EmailService {
-  sendEmail(data: ContactFormData, request?: Request): Promise<boolean>;
+  sendEmail(data: ContactFormData, request?: Request, attachment?: AttachmentPayload): Promise<boolean>;
   sendAutoReply(data: ContactFormData): Promise<boolean>;
 }
 
@@ -98,6 +112,12 @@ export interface Environment extends Record<string, string> {
   RATE_LIMIT_EMAIL_ENABLED?: string;
   RATE_LIMIT_EMAIL_LIMIT?: string;
   RATE_LIMIT_EMAIL_WINDOW?: string;
+
+  // Attachments configuration (runtime)
+  ATTACHMENTS_ENABLED?: string;                // "true" | "false" (default: false)
+  ATTACHMENTS_MAX_FILE_SIZE_BYTES?: string;    // per-file limit (default: 10485760 = 10MB)
+  ATTACHMENTS_MIME_WHITELIST?: string;         // semicolon-separated MIME types
+  ATTACHMENTS_MIME_BLACKLIST?: string;         // semicolon-separated MIME types
 }
 
 export interface RequestContext {

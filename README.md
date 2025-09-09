@@ -268,6 +268,95 @@ X-API-Key: your-secure-api-key-here
 | `subject` | Required, max 200 characters (configurable via `SUBJECT_MAX_LENGTH`) |
 | `message` | Required, default 10-5000 characters (configurable via `MESSAGE_MIN_LENGTH` and `MESSAGE_MAX_LENGTH`) |
 
+## 📎 Attachments (Optional)
+
+Attachments are supported as a single optional file sent inline in the request body (Base64 content). The feature is DISABLED by default.
+
+Key points:
+- Disabled by default: require ATTACHMENTS_ENABLED=true to accept attachments.
+- Single attachment only per request.
+- Attachment is optional even when enabled; required fields (email, subject, message) remain mandatory.
+- MIME-based allow/deny filtering (recommended: whitelist common docs and images).
+- Per-file size limit defaults to 10 MB (configurable).
+- Resend enforces a 40 MB maximum per email (including Base64 overhead). Base64 increases size ~33% vs raw bytes.
+
+Unsupported extensions (blocked regardless of MIME) on Resend:
+.adp .app .asp .bas .bat .cer .chm .cmd .com .cpl .crt .csh .der .exe .fxp .gadget .hlp .hta .inf .ins .isp .its .js .jse .ksh .lib .lnk .mad .maf .mag .mam .maq .mar .mas .mat .mau .mav .maw .mda .mdb .mde .mdt .mdw .mdz .msc .msh .msh1 .msh2 .mshxml .msh1xml .msh2xml .msi .msp .mst .ops .pcd .pif .plg .prf .prg .reg .scf .scr .sct .shb .shs .sys .ps1 .ps1xml .ps2 .ps2xml .psc1 .psc2 .tmp .url .vb .vbe .vbs .vps .vsmacros .vss .vst .vsw .vxd .ws .wsc .wsf .wsh .xnk
+
+Configuration (wrangler.toml or Cloudflare dashboard):
+```toml
+[vars]
+# Enable single optional attachment
+ATTACHMENTS_ENABLED = "true"
+
+# Default per-file size: 10 MB (adjust with caution due to 40 MB total cap)
+ATTACHMENTS_MAX_FILE_SIZE_BYTES = "10485760"
+
+# Recommended MIME whitelist: documents + images + PDF
+ATTACHMENTS_MIME_WHITELIST = "application/json;text/csv;text/plain;image/png;image/jpeg;image/webp;image/gif;application/pdf"
+
+# Optional MIME blacklist
+ATTACHMENTS_MIME_BLACKLIST = ""
+```
+
+API request with attachment (when enabled):
+```json
+{
+  "email": "user@example.com",
+  "subject": "Contact Form Submission",
+  "message": "Hello from the form",
+  "attachment": {
+    "filename": "document.json",
+    "contentType": "application/json",
+    "content": "e30="  // This is Base64 for "{}"
+  }
+}
+```
+
+Notes:
+- contentType must be a valid MIME type present in the whitelist (if configured) and not present in the blacklist.
+- filename must not use a disallowed extension (see list above).
+- content must be a Base64 string for the raw file bytes (no data: URI prefix like "data:...;base64,").
+
+How to create Base64 content (examples)
+
+Node.js:
+```js
+import { readFileSync } from "fs";
+const buf = readFileSync("./document.json");
+const base64 = buf.toString("base64");
+// Use `base64` as the "content" field
+```
+
+Bash:
+```bash
+# macOS/Linux
+base64 -i ./document.json | tr -d "\n"  # strip newlines for JSON
+```
+
+cURL request example (attachments enabled):
+```bash
+curl -X POST https://your-api.workers.dev/api/contact \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your-api-key" \ # if API key enabled
+  -d '{
+    "email": "user@example.com",
+    "subject": "Hello with attachment",
+    "message": "Please find the attachment.",
+    "attachment": {
+      "filename": "data.json",
+      "contentType": "application/json",
+      "content": "e30="
+    }
+  }'
+```
+
+Recommended MIME whitelist
+- Documents: application/json; text/plain; text/csv; application/pdf
+- Images: image/png; image/jpeg; image/webp; image/gif
+
+Caution:
+- Increasing ATTACHMENTS_MAX_FILE_SIZE_BYTES may cause emails to exceed Resend’s 40 MB limit (including Base64 expansion). Consider keeping 10 MB or lower, and only whitelist MIME types you actually need.
 ## 🔧 Environment Variables
 
 Complete reference for all configuration options:

@@ -9,6 +9,7 @@ import { createEmailService } from '@/services/email';
 import { addCorsHeaders } from '@/utils/cors';
 import { createRateLimitService, extractRealIP } from '@/services/rate-limit';
 import { isRateLimitingEnabled, getRateLimitFailureMode } from '@/utils/env-config';
+import { isAttachmentsEnabled, getAttachmentsConfig, validateAndNormalizeAttachment } from '@/utils/attachments';
 
 /**
  * Handles contact form submission
@@ -43,8 +44,29 @@ export async function handleContactSubmission(c: Context<{ Bindings: Environment
       return createErrorResponse(errorResponse, 400, c);
     }
 
-    // Validate form data
-    const validation = validateContactForm(requestData);
+    // Attachments handling - determine if enabled and normalize input shape for validation
+    const attachmentsEnabled = isAttachmentsEnabled(c.env);
+    const hasAttachment = typeof (requestData as any).attachment !== 'undefined' && (requestData as any).attachment !== null;
+
+    // When attachments are disabled (default), reject any incoming attachment to preserve current API behavior
+    if (!attachmentsEnabled && hasAttachment) {
+      const errorResponse: ApiError = {
+        error: 'Attachments are disabled',
+        details: [{ field: 'attachment', message: 'This deployment has attachments disabled. Enable ATTACHMENTS_ENABLED to allow attachments.' }],
+        timestamp: new Date().toISOString()
+      };
+      return createErrorResponse(errorResponse, 400, c);
+    }
+
+    // Build the core payload for validation (avoid strict schema rejecting "attachment" when enabled)
+    const corePayload = {
+      email: (requestData as any).email,
+      subject: (requestData as any).subject,
+      message: (requestData as any).message
+    };
+
+    // Validate form data (email, subject, message)
+    const validation = validateContactForm(attachmentsEnabled ? corePayload : requestData);
     
     if (!validation.success) {
       const errorResponse: ApiError = {
@@ -55,8 +77,24 @@ export async function handleContactSubmission(c: Context<{ Bindings: Environment
       
       return createErrorResponse(errorResponse, 400, c);
     }
-
+    
     const formData = validation.data!;
+
+    // If enabled and attachment is present, validate the attachment
+    let normalizedAttachment: { filename: string; contentType: string; content: string } | undefined;
+    if (attachmentsEnabled && hasAttachment) {
+      const config = getAttachmentsConfig(c.env);
+      const attValidation = validateAndNormalizeAttachment((requestData as any).attachment, config);
+      if (!attValidation.ok) {
+        const errorResponse: ApiError = {
+          error: 'Validation failed',
+          details: attValidation.errors,
+          timestamp: new Date().toISOString()
+        };
+        return createErrorResponse(errorResponse, 400, c);
+      }
+      normalizedAttachment = attValidation.value;
+    }
 
     // Check for banned words
     if (containsBannedWords(formData, c.env.BANNED_WORDS)) {
@@ -171,7 +209,7 @@ export async function handleContactSubmission(c: Context<{ Bindings: Environment
 
     // Create email service and send email
     const emailService = createEmailService(c.env);
-    const emailSent = await emailService.sendEmail(formData, c.req.raw);
+    const emailSent = await emailService.sendEmail(formData, c.req.raw, normalizedAttachment);
 
     if (!emailSent) {
       const errorResponse: ApiError = {

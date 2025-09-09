@@ -15,7 +15,7 @@ type EmailSendOptions = Parameters<InstanceType<typeof Resend>['emails']['send']
 /**
  * Email service implementation using Resend
  */
-export class ResendEmailService implements EmailService {
+class ResendEmailService implements EmailService {
   private resend: Resend;
   private targetEmail: string;
   private fromEmail: string;
@@ -154,6 +154,10 @@ export class ResendEmailService implements EmailService {
   }
 
 }
+
+// Explicit re-exports for compatibility with Bun's ESM resolver
+export { ResendEmailService };
+export default ResendEmailService;
 
 /**
  * Factory function to create email service

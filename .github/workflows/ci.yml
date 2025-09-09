@@ -32,6 +32,8 @@ jobs:
         run: bun install --frozen-lockfile
         
       - name: Run tests
+        env:
+          BUN_NO_TRANSPILE_CACHE: "1"
         run: |
           echo "🧪 Running test suite..."
           bun test
